@@ -1,0 +1,10 @@
+Story Creator generated sound effects (resources/sfx/generated)
+
+Whooshes, swoosh, riser, boom, hit, drone, heartbeat, clock and the ambiences (rain, wind, ocean,
+night, room tone) were synthesized with FFmpeg for Story Creator. They contain no recorded material.
+
+License: Creative Commons Zero (CC0 1.0) - http://creativecommons.org/publicdomain/zero/1.0/
+Free to use in personal and commercial videos, no credit required.
+
+The other folders in resources/sfx (impact, rpg, interface, scifi) are by Kenney (www.kenney.nl),
+also CC0; see the Kenney-*-CC0.txt files.
