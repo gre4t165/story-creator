@@ -1,6 +1,6 @@
 # Story Creator
 
-_by Bang Tutorial_
+_cc by Bang Story_
 
 Aplikasi desktop Windows untuk mengubah ide cerita jadi video YouTube: AI menyusun klip dan naskah, Higgsfield membuat gambar dan video, Gemini, ElevenLabs, atau Edge (gratis) membuat suara narator, lalu semuanya dirangkai di editor timeline dan diekspor jadi MP4.
 

@@ -23,7 +23,7 @@ export function AboutSection() {
             title="Buka channel YouTube Bang Tutorial"
             className="self-start text-sm font-medium text-muted underline-offset-2 hover:text-accent-dark hover:underline"
           >
-            by Bang Tutorial
+            cc by Bang Story
           </button>
         </div>
         {version && <span className="rounded-full border border-line-2 px-3 py-1 font-mono text-xs text-ink">Versi {version}</span>}

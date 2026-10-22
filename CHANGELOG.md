@@ -8,11 +8,17 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+## [1.1.0] - 2026-10-22
+
 ### Diubah
 - **Nama aplikasi menjadi Story Creator.** Folder data `%APPDATA%\Bang Story` (proyek, database, kunci) dipindahkan
   otomatis saat pertama dibuka. ID aplikasi tetap, jadi installer baru memperbarui instalasi lama.
 
 ### Ditambahkan
+- **Impor video**: file MP4, MOV, atau WebM bisa dipakai di mana pun gambar bisa diimpor (satu klip, banyak
+  sekaligus, JSON dengan kunci `video`, atau seret ke kartu klip). Video jadi video klip dengan frame pertamanya
+  sebagai gambar. Klip tanpa narasi mengikuti panjang video; suara asli video tidak dipakai.
+- Teks kredit menjadi "cc by Bang Story".
 - **Suara lokal: Voicebox / voice studio** di `http://127.0.0.1:17493` (alamat bisa diganti di Pengaturan). Daftar suara
   diambil dari profil Voicebox (preset dan kloning); server lain dipanggil lewat format OpenAI `/v1/audio/speech`.
 - **Impor gambar dan suara sendiri** di Storyboard: satu file per klip, banyak file sekaligus (dicocokkan dengan nomor

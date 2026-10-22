@@ -206,7 +206,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
                 Generate gambar
               </Button>
               <Button icon={<Upload className="size-4" />} onClick={() => void run(() => window.api.imports.clipFile(clip.id, 'image'))}>
-                Pakai gambar sendiri
+                Pakai gambar/video sendiri
               </Button>
             </div>
           )}
@@ -248,7 +248,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
           )}
           {image && (
             <Button size="sm" icon={<Upload className="size-4" />} onClick={() => void run(() => window.api.imports.clipFile(clip.id, 'image'))}>
-              Ganti dengan gambar sendiri
+              Ganti dengan gambar/video sendiri
             </Button>
           )}
           <Button size="sm" icon={<Pencil className="size-4" />} onClick={() => setEditPrompt(!editPrompt)}>
@@ -623,7 +623,7 @@ export function StoryboardStep() {
         <div className="flex gap-2.5">
           <Button onClick={() => updateProject({ step: 2 })}>Ke Naskah</Button>
           <Button icon={<Upload className="size-4" />} onClick={() => void importFiles('batch', 'image')}>
-            Impor gambar
+            Impor gambar/video
           </Button>
           <Button icon={<FileJson className="size-4" />} onClick={() => void importFiles('json', 'image')}>
             Impor JSON
@@ -668,13 +668,13 @@ export function StoryboardStep() {
         <div className="flex-1" />
         <Menu
           trigger={(open) => (
-            <Button icon={<Upload className="size-[17px]" />} onClick={open} title="Pakai gambar atau suara sendiri, satu per satu, sekaligus banyak, atau dari file JSON">
+            <Button icon={<Upload className="size-[17px]" />} onClick={open} title="Pakai gambar, video, atau suara sendiri, satu per satu, sekaligus banyak, atau dari file JSON">
               Impor
             </Button>
           )}
           items={[
-            { label: 'Gambar sekaligus', icon: <ImageIcon className="size-4" />, run: () => void importFiles('batch', 'image') },
-            { label: 'Gambar dari JSON', icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'image') },
+            { label: 'Gambar/video sekaligus', icon: <ImageIcon className="size-4" />, run: () => void importFiles('batch', 'image') },
+            { label: 'Gambar/video dari JSON', icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'image') },
             { label: 'Suara sekaligus', icon: <Volume2 className="size-4" />, run: () => void importFiles('batch', 'audio') },
             { label: 'Suara dari JSON', icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'audio') },
             { label: 'Musik + atur gambar', icon: <Music className="size-4" />, run: () => void musicFit.fit(true) }
@@ -782,7 +782,7 @@ export function StoryboardStep() {
                     setDropOn(null)
                     void dropFiles(c.id, [...e.dataTransfer.files])
                   }}
-                  title="Klik untuk memilih. Taruh file gambar atau suara di sini untuk memasangnya."
+                  title="Klik untuk memilih. Taruh file gambar, video, atau suara di sini untuk memasangnya."
                   className={cx(
                     'flex flex-col overflow-hidden rounded-[14px] bg-surface text-left',
                     dropOn === c.id

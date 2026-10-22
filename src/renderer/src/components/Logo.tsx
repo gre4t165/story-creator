@@ -20,7 +20,7 @@ export function Logo() {
       <LogoMark />
       <span className="flex flex-col leading-none">
         <span className="font-display text-[21px] font-bold tracking-[-0.01em]">Story Creator</span>
-        <span className="mt-[3px] self-end text-[10.5px] font-medium text-muted">by Bang Tutorial</span>
+        <span className="mt-[3px] self-end text-[10.5px] font-medium text-muted">cc by Bang Story</span>
       </span>
     </span>
   )

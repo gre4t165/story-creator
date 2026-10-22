@@ -145,7 +145,7 @@ selama ekspor berjalan.
 3. `npm run typecheck` dan `npm run build`.
 4. `npm run dist` → `dist/StoryCreator-Setup-<versi>.exe`.
 
-Yang ikut dipaketkan (lihat `electron-builder.yml`): `out/`, FFmpeg (di luar asar), `resources/fonts` → `fonts`,
+Yang ikut dipaketkan (lihat `electron-builder.yml`): `out/`, FFmpeg (di luar asar), `resources/fonts` → `fonts`, `resources/sfx` → `sfx`,
 `resources/whisper` → `whisper`, `resources/licenses` → `licenses`, dan lisensi FFmpeg →
 `licenses/FFmpeg-LICENSE.txt`.
 

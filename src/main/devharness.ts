@@ -67,7 +67,7 @@ function addDemoOverlays(projectId: string): void {
           {
             id: 'ov-text',
             kind: 'text',
-            text: 'Story Creator\nby Bang Tutorial',
+            text: 'Story Creator\ncc by Bang Story',
             anchor: 5,
             x: 0.5,
             y: 0.42,

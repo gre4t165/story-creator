@@ -124,6 +124,10 @@ Menu **Impor** di Storyboard dan tombol per klip (Pakai gambar sendiri, Impor su
 }
 ```
 
+Video (MP4, MOV, WebM) diterima di mana pun gambar diterima, termasuk kunci `video` di JSON: video jadi
+`videoAssetId` klip (`motionType: 'video'`) dan frame pertamanya jadi gambar klip. Klip tanpa suara mengikuti
+panjang video; suara asli video tidak ikut (ekspor memakai `-an`, sama seperti video AI).
+
 Path relatif dihitung dari folder file JSON; boleh juga path absolut atau link http(s). JSON suara menyuarakan adegan
 yang punya narasi tanpa file audio (kecuali `"generate": false`), dengan `voice`/`provider` per adegan
 (`generateClipTts` dengan override). JSON gambar hanya menggambar adegan tanpa file gambar kalau `"generate": true`,
