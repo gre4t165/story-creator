@@ -9,7 +9,7 @@
 | Whisper hanya untuk Windows | Biner yang disertakan hanya `whisper-cli.exe`. Di macOS, narasi baru otomatis kembali ke waktu perkiraan (`whisperTimes` menangkap error-nya), tapi tombol sinkron caption akan error. | Tambahkan biner whisper.cpp macOS, pilih sesuai `process.platform` di `cliPath()` (`whisper.ts`), dan sembunyikan fitur ini kalau binernya tidak ada. |
 | Installer hanya Windows | `npm run dist` menghasilkan NSIS Windows. | Tambahkan target `mac` di `electron-builder.yml` (perlu sertifikat untuk distribusi). |
 | Rekam ulang narasi mereset durasi | Durasi klip dan potongan suara manual kembali mengikuti suara baru. | Disengaja; bisa ditambah opsi "pertahankan durasi". |
-| Sinkron Whisper menimpa edit caption manual | `syncCaptions` menulis ulang `meta.words` dari naskah, jadi teks caption yang diedit tangan kembali ke naskah. Ini terjadi pada mode "semua klip", dan pada klip yang memang perlu disinkronkan. | Lewati klip dengan `meta.editedWords`, atau tanya pengguna dulu. |
+| Suara asli video impor tidak dipakai | Video yang diimpor diputar dan diekspor tanpa suaranya sendiri (`-an`), sama seperti video AI. | Tambah pilihan per klip untuk mencampur audio video, di pratinjau (`engine.ts`) dan ekspor. |
 | Riwayat versi aset setelah split | Bagian kedua memakai gambar/video milik klip asal; riwayat versinya ada di klip asal. | Salin baris aset untuk klip baru kalau riwayat per bagian diperlukan. |
 | Caption sulit digeser utuh | Potongan caption berdempetan, jadi menyeret badannya sering tidak punya ruang. | Tarik tepinya; atau izinkan geser yang ikut mendorong potongan tetangga. |
 | Tidak semua model sudah diuji langsung | Katalog Higgsfield berisi 48 model; sebagian besar baru diuji lewat body permintaan, belum lewat generate sungguhan. Penyedia LLM selain Gemini juga belum semuanya diuji. | Uji model yang sering dipakai, lalu catat model yang bermasalah. |
@@ -23,6 +23,6 @@
 - Undo/redo dan riwayat versi per klip di editor.
 - Ekspor langsung ke YouTube (OAuth) dengan judul dan deskripsi dari naskah.
 - Template intro/outro dan watermark tersimpan per channel.
-- Pilihan TTS lokal sepenuhnya offline (Edge TTS gratis sudah ada, tetapi butuh internet).
+- Suara asli video impor sebagai pilihan per klip.
 - Dukungan macOS penuh (Whisper, installer).
 - Unit test untuk modul `src/shared/` (caption, timeline, motion) dengan Vitest.

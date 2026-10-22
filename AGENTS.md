@@ -1,8 +1,9 @@
 # AGENTS.md — panduan untuk AI agent dan pengembang
 
 Story Creator adalah aplikasi desktop (Electron + React + TypeScript) yang mengubah ide cerita menjadi video YouTube:
-AI menulis naskah dan rencana visual, Higgsfield membuat gambar dan video, Gemini, ElevenLabs, atau Edge (gratis) membuat suara
-narator, lalu semuanya dirangkai di editor timeline dan diekspor jadi MP4 dengan FFmpeg.
+AI menulis naskah dan rencana visual, Higgsfield membuat gambar dan video (atau pengguna mengimpor gambar/video sendiri),
+Gemini, ElevenLabs, Edge (gratis), atau Voicebox lokal membuat suara narator, lalu semuanya dirangkai di editor timeline
+bersama musik dan SFX bawaan, dan diekspor jadi MP4 dengan FFmpeg.
 
 Baca file ini dulu sebelum mengubah kode. Detail lengkapnya ada di folder [`docs/`](docs/README.md).
 
@@ -34,18 +35,21 @@ src/
     whisper.ts     whisper.cpp lokal (unduh model, kenali kata)
     align.ts, cuts.ts  cocokkan kata naskah ke hasil Whisper; pilih titik potong antar-adegan
     editing.ts     potong (split) klip, lepas suara klip
+    importer.ts    impor gambar/video/suara: satu file, batch, JSON, seret ke kartu klip
+    beats.ts       ketukan kasar musik (untuk "Musik + atur gambar")
     exporter.ts    render MP4 dengan FFmpeg
     fontMetrics.ts lebar teks dari file TTF (untuk kotak caption di ekspor)
     jobs.ts, events.ts  antrean job + event ke renderer
     secrets.ts     kunci API terenkripsi (safeStorage/DPAPI)
-    services/      klien API: gemini, elevenlabs, edgetts, higgsfield, cloudflare, pollinations, llm (OpenAI-compatible), audio, http
+    services/      klien API: gemini, elevenlabs, edgetts, localtts (Voicebox), higgsfield, cloudflare, pollinations, llm (OpenAI-compatible), audio, http
     devharness.ts  otomatisasi uji (hanya mode pengembangan)
   preload/         jembatan aman: window.api (lihat src/shared/api.ts)
   shared/          kode yang dipakai main DAN renderer (tipe, aturan gerak, caption, timeline)
   renderer/src/    tampilan React + Tailwind v4 + Zustand
     pages/project/  langkah Ide, Naskah, Storyboard, Editor
     pages/project/editor/  pratinjau (Player), Timeline, Inspector (panel kanan), engine pemutaran
-resources/         font caption, whisper-cli.exe + DLL, file lisensi
+resources/         font caption, whisper-cli.exe + DLL, pustaka SFX CC0 (sfx/), file lisensi
+scripts/           sfx-catalog.cjs: bangun ulang src/shared/sfx-catalog.json
 docs/              dokumentasi pengembang
 ```
 

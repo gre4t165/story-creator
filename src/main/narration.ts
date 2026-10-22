@@ -363,7 +363,9 @@ export function syncCaptions(projectId: string, mode: 'stale' | 'all' = 'stale')
         ctx.progress(0.03 + 0.95 * (i / targets.length), `Menyinkronkan klip ${i + 1} dari ${targets.length}`)
         const asset = getAsset(getClip(targets[i].id).audioAssetId)
         if (!asset) continue
-        const words = spokenWords(asset.prompt ?? targets[i].narration)
+        // Caption text fixed by hand stays: those words are timed against the voice instead of the script's.
+        const edited = asset.meta.editedWords && asset.meta.words?.length ? asset.meta.words.map((w) => w.text) : null
+        const words = edited ?? spokenWords(asset.prompt ?? targets[i].narration)
         if (!words.length) continue
         const seconds = (asset.durationMs ?? targets[i].durationMs) / 1000
         const timed = await timeScript(assetAbsPath(projectId, asset.localPath), words, project.language, seconds, tmp, ctx.signal)

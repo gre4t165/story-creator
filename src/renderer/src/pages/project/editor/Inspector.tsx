@@ -19,6 +19,7 @@ import { AutoTextarea } from '../../../components/AutoTextarea'
 import { Button, Segmented, Switch, cx, inputCls } from '../../../components/ui'
 import { clipNumber, errorText, secLabel, timecode } from '../../../lib/format'
 import { useApp } from '../../../store/app'
+import { ELEVENLABS_URL } from '../../../lib/links'
 import { useMusicFit } from '../../../lib/useMusicFit'
 import { useNarration } from '../../../lib/useNarration'
 import { isRunning, jobFor, useProject } from '../../../store/project'
@@ -695,7 +696,7 @@ function PromptField({ label, hint, value, rows, onChange }: { label: string; hi
 const MUSIC_SITES = [
   { name: 'Suno', url: 'https://suno.com/create' },
   { name: 'Udio', url: 'https://www.udio.com/create' },
-  { name: 'ElevenLabs Music', url: 'https://elevenlabs.io/app/music' }
+  { name: 'ElevenLabs Music', url: ELEVENLABS_URL }
 ]
 
 /** Writes a prompt for background music that suits this story, to use in Suno or another music AI. */

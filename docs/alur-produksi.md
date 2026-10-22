@@ -100,7 +100,8 @@ dan intonasinya konsisten. (Rekaman per klip menghasilkan suara yang sedikit ber
 - `align.ts` mencocokkan kata **naskah** ke kata yang didengar Whisper (edit distance). Ejaan caption tetap dari
   naskah; hanya waktunya dari Whisper.
 - Berjalan otomatis setelah narasi Gemini (`whisperAuto`), atau manual lewat tab Caption
-  (`syncCaptions`, mode `stale`/`all`). Hasil ditandai `meta.timedBy = 'whisper-dtw'`.
+  (`syncCaptions`, mode `stale`/`all`). Hasil ditandai `meta.timedBy = 'whisper-dtw'`. Klip yang teks captionnya
+  diedit tangan (`meta.editedWords`) disinkronkan memakai kata hasil edit itu, jadi editnya tidak hilang.
 
 ## Impor gambar dan suara sendiri (`src/main/importer.ts`)
 

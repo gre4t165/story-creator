@@ -17,7 +17,7 @@ export interface ContentRules {
   hijab: boolean
 }
 
-export const DEFAULT_CONTENT_RULES: ContentRules = { hideFaces: true, censorStyle: 'blur', modestWomen: true, hijab: false }
+export const DEFAULT_CONTENT_RULES: ContentRules = { hideFaces: false, censorStyle: 'blur', modestWomen: false, hijab: false }
 
 export function normalizeRules(r?: Partial<ContentRules> | null): ContentRules {
   const v = r && typeof r === 'object' ? r : {}

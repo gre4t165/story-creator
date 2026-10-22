@@ -8,6 +8,17 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+## [1.1.1] - 2026-10-22
+
+### Diubah
+- **Aturan gambar dan video (sembunyikan wajah, pakaian sopan) mati secara bawaan.** Bisa dinyalakan di Pengaturan ›
+  Aturan gambar & video. Pengaturan yang sudah pernah kamu simpan tidak berubah.
+- Tautan daftar Higgsfield dan ElevenLabs diperbarui (disatukan di `renderer/src/lib/links.ts`).
+
+### Diperbaiki
+- Sinkron caption dengan Whisper tidak lagi menimpa teks caption yang sudah diedit tangan: kata hasil edit yang
+  diberi waktu ulang.
+
 ## [1.1.0] - 2026-10-22
 
 ### Diubah

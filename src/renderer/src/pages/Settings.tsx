@@ -29,6 +29,7 @@ import { ContentSection } from './ContentSection'
 import { WhisperSection } from './WhisperSection'
 import { Badge, Button, Field, IconButton, confirmDialog, cx, inputCls } from '../components/ui'
 import { errorText, relativeTime } from '../lib/format'
+import { ELEVENLABS_URL, HIGGSFIELD_URL } from '../lib/links'
 import { useModels } from '../lib/useModels'
 import { useApp } from '../store/app'
 
@@ -595,10 +596,14 @@ function TtsSection({ settings, statusOf, onChanged, onSettings }: { settings: A
               provider={provider}
               name={provider === 'gemini' ? 'Google Gemini' : 'ElevenLabs'}
               status={status}
-              help={provider === 'gemini' ? 'Kunci Gemini dari Google AI Studio.' : 'Kunci API dari akun ElevenLabs.'}
+              help={
+                provider === 'gemini'
+                  ? 'Kunci Gemini dari Google AI Studio.'
+                  : 'Belum punya akun? Daftar lewat tautan di bawah. Kuncinya ada di ElevenLabs › Settings › API Keys.'
+              }
               hint={provider === 'gemini' && settings.llmProvider === 'gemini' ? 'Kunci ini dipakai bersama dengan penyusun cerita Gemini.' : undefined}
-              link={provider === 'gemini' ? 'https://aistudio.google.com/apikey' : 'https://elevenlabs.io/app/settings/api-keys'}
-              linkLabel={provider === 'gemini' ? 'Buat kunci di Google AI Studio' : 'Buat kunci di ElevenLabs'}
+              link={provider === 'gemini' ? 'https://aistudio.google.com/apikey' : ELEVENLABS_URL}
+              linkLabel={provider === 'gemini' ? 'Buat kunci di Google AI Studio' : 'Daftar atau buka ElevenLabs'}
               onChanged={onChanged}
               onSaved={(r) => r.ok && void models.refresh()}
             />
@@ -649,8 +654,8 @@ function HiggsfieldSection({ status, onChanged }: { status?: KeyStatus; onChange
             </>
           }
           help="Kunci dicek dengan permintaan estimasi biaya, tanpa memakai kredit."
-          link="https://higgsfield.ai/s/higgsfield-api-yt-bangtutorial-lPMrHK"
-          linkLabel="Buka console Higgsfield"
+          link={HIGGSFIELD_URL}
+          linkLabel="Daftar atau buka Higgsfield"
           onChanged={onChanged}
         />
         <p className="flex items-start gap-2.5 border-t border-dashed border-line pt-4 text-[13px] leading-relaxed text-ink-2">
