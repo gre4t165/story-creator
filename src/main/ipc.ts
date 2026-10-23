@@ -8,6 +8,7 @@ import type {
   AspectRatio,
   ExportOptions,
   KeyTestResult,
+  LinkRestore,
   ModelSource,
   NewProjectInput,
   ProjectSnapshot,
@@ -35,7 +36,7 @@ import { cancelJob } from './jobs'
 import { generateNarration, syncCaptions } from './narration'
 import { cancelDownload, downloadModel, openModelFolder, removeModel, whisperStatus } from './whisper'
 import { assetAbsPath } from './paths'
-import { detachVoice, splitClip } from './editing'
+import { detachAllVideos, detachVideo, detachVoice, purgeUnusedVideos, restoreLinks, splitClip } from './editing'
 import { emit } from './events'
 import {
   createProject,
@@ -95,6 +96,7 @@ export function registerIpc(): void {
   handle('projects:save', (snap: ProjectSnapshot) => ({ updatedAt: saveSnapshot(snap) }))
   handle('projects:remove', (id: string) => removeProject(id))
   handle('projects:duplicate', (id: string) => duplicateProject(id))
+  handle('projects:setLinks', (projectId: string, links: LinkRestore) => restoreLinks(projectId, links))
 
   handle('story:script', (projectId: string) => generateScript(projectId))
   handle('story:musicPrompt', (projectId: string) => generateMusicPrompt(projectId))
@@ -132,6 +134,9 @@ export function registerIpc(): void {
   handle('assets:setActive', (clipId: string, assetId: string) => setActiveAsset(clipId, assetId))
   handle('clips:split', (clipId: string, atMs: number) => splitClip(clipId, Number(atMs)))
   handle('clips:detachVoice', (clipId: string) => detachVoice(clipId))
+  handle('clips:detachVideo', (clipId: string) => detachVideo(clipId))
+  handle('clips:detachAllVideos', (projectId: string) => detachAllVideos(projectId))
+  handle('assets:purgeVideos', (projectId: string) => purgeUnusedVideos(projectId))
   // Caption text fixed by hand in the editor; the words keep their times.
   handle('assets:setWords', (assetId: string, words: WordTiming[]) => {
     const a = getAsset(assetId)

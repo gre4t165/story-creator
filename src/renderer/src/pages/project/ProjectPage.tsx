@@ -35,10 +35,22 @@ export function ProjectPage({ id }: { id: string }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key === 's') {
         e.preventDefault()
         void useProject.getState().save()
+        return
       }
+      if (key !== 'z' && key !== 'y') return
+      // In a text box Ctrl+Z belongs to the box (its own typing history); everywhere else it undoes the project.
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      if (document.querySelector('[role="dialog"]')) return
+      e.preventDefault()
+      const s = useProject.getState()
+      if (key === 'y' || e.shiftKey) void s.redo()
+      else void s.undo()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

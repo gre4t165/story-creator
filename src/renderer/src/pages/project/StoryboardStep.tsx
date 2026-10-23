@@ -20,6 +20,7 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  VideoOff,
   Volume2
 } from 'lucide-react'
 import { resolveImageModelId } from '@shared/freemodels'
@@ -32,7 +33,7 @@ import { AutoTextarea } from '../../components/AutoTextarea'
 import { CharacterAvatar } from '../../components/CharacterAvatar'
 import { ClipVisual } from '../../components/ClipVisual'
 import { Badge, Button, Chip, IconButton, Menu, Progress, Segmented, confirmDialog, cx, inputCls } from '../../components/ui'
-import { clipNumber, errorText, mmss, secLabel } from '../../lib/format'
+import { clipNumber, errorText, mmss, secLabel, sizeLabel } from '../../lib/format'
 import { shuffleMotions, useMusicFit } from '../../lib/useMusicFit'
 import { useNarration } from '../../lib/useNarration'
 import { useApp } from '../../store/app'
@@ -109,7 +110,7 @@ function MotionPreview({ image, clip }: { image: Asset; clip: Clip }) {
 }
 
 function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: number }) {
-  const { project, clips, characters, assets, jobs, updateClip, updateProject, removeClip, moveClip, addClip, select, flush } = useProject()
+  const { project, clips, characters, assets, jobs, updateClip, updateProject, removeClip, moveClip, addClip, select, flush, record } = useProject()
   const { toast } = useApp()
   const audio = useAudio()
   const [editPrompt, setEditPrompt] = useState(false)
@@ -205,7 +206,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
               <Button variant="accent" icon={<Sparkles className="size-4" />} onClick={() => void run(() => window.api.generate.clipImage(clip.id))}>
                 Generate gambar
               </Button>
-              <Button icon={<Upload className="size-4" />} onClick={() => void run(() => window.api.imports.clipFile(clip.id, 'image'))}>
+              <Button icon={<Upload className="size-4" />} onClick={() => void run(() => record('Impor gambar/video', () => window.api.imports.clipFile(clip.id, 'image')))}>
                 Pakai gambar/video sendiri
               </Button>
             </div>
@@ -217,7 +218,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
                   key={v.id}
                   type="button"
                   aria-label={`Pakai versi ${versions.length - arr.length + i + 1}`}
-                  onClick={() => void window.api.assets.setActive(clip.id, v.id)}
+                  onClick={() => void record('Ganti versi gambar', () => window.api.assets.setActive(clip.id, v.id))}
                   className={cx(
                     'h-[26px] w-[44px] overflow-hidden rounded-[5px]',
                     v.id === clip.imageAssetId ? 'border-2 border-accent' : 'border border-line-2 opacity-80 hover:opacity-100'
@@ -247,7 +248,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
             </Button>
           )}
           {image && (
-            <Button size="sm" icon={<Upload className="size-4" />} onClick={() => void run(() => window.api.imports.clipFile(clip.id, 'image'))}>
+            <Button size="sm" icon={<Upload className="size-4" />} onClick={() => void run(() => record('Impor gambar/video', () => window.api.imports.clipFile(clip.id, 'image')))}>
               Ganti dengan gambar/video sendiri
             </Button>
           )}
@@ -339,7 +340,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
               size="sm"
               icon={<Upload className="size-3.5" />}
               title="Pakai rekaman suara sendiri (MP3, WAV, M4A, OGG, FLAC) untuk klip ini"
-              onClick={() => void run(() => window.api.imports.clipFile(clip.id, 'audio'))}
+              onClick={() => void run(() => record('Impor suara', () => window.api.imports.clipFile(clip.id, 'audio')))}
             >
               Impor suara
             </Button>
@@ -464,6 +465,17 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
                 >
                   {video ? 'Buat ulang video' : 'Buat video'}
                 </Button>
+                {(video || isRunning(videoJob)) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    icon={<VideoOff className="size-4" />}
+                    title="Lepas video dari klip ini. Klip kembali memakai gambar dengan gerak kamera. Bisa diurungkan (Ctrl+Z)."
+                    onClick={() => void run(() => record('Hapus video klip', () => window.api.clips.detachVideo(clip.id)))}
+                  >
+                    {isRunning(videoJob) ? 'Batalkan video' : 'Hapus video'}
+                  </Button>
+                )}
                 {!image && <span className="text-xs text-muted">Buat gambar dulu, lalu jadikan video.</span>}
                 {isRunning(videoJob) && (
                   <span className="text-xs text-sun-ink">
@@ -481,7 +493,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
 }
 
 export function StoryboardStep() {
-  const { project, clips, characters, assets, jobs, selectedClipId, select, addClip, updateProject, flush, load } = useProject()
+  const { project, clips, characters, assets, jobs, selectedClipId, select, addClip, updateProject, flush, load, record, undo, clearHistory } = useProject()
   const { toast } = useApp()
   /** A character id, "new" for an unsaved one, or null. */
   const [openChar, setOpenChar] = useState<string | null>(null)
@@ -557,9 +569,12 @@ export function StoryboardStep() {
   const importFiles = async (how: 'batch' | 'json', kind: 'image' | 'audio'): Promise<void> => {
     try {
       await flush()
-      const r = await window.api.imports[how](project.id, kind)
+      const r = await record(kind === 'image' ? 'Impor gambar/video' : 'Impor suara', async () => {
+        const res = await window.api.imports[how](project.id, kind)
+        if (res) load(res.bundle)
+        return res
+      })
       if (!r) return
-      load(r.bundle)
       toast(/gagal/.test(r.message) ? 'error' : 'success', r.message)
     } catch (e) {
       toast('error', errorText(e))
@@ -570,8 +585,11 @@ export function StoryboardStep() {
     if (!paths.length) return
     try {
       await flush()
-      const r = await window.api.imports.dropped(clipId, paths)
-      load(r.bundle)
+      const r = await record('Impor file', async () => {
+        const res = await window.api.imports.dropped(clipId, paths)
+        load(res.bundle)
+        return res
+      })
       toast(/gagal/.test(r.message) ? 'error' : 'success', r.message)
     } catch (e) {
       toast('error', errorText(e))
@@ -597,13 +615,58 @@ export function StoryboardStep() {
     if (ok) await bulk(() => window.api.generate.missingVideos(project!.id))
   }
 
+  const withVideo = clips.filter((c) => c.videoAssetId).length
+  const loose = Object.values(assets).filter((a) => a.kind === 'video' && !clips.some((c) => c.videoAssetId === a.id)).length
+  const videoMaking = clips.filter((c) => isRunning(jobFor(jobs, 'video', { clipId: c.id }))).length
+
+  const removeAllVideos = async (): Promise<void> => {
+    if (!withVideo && !videoMaking) return void toast('error', 'Belum ada video di proyek ini.')
+    const ok = await confirmDialog({
+      title: withVideo ? `Hapus ${withVideo} video?` : 'Batalkan video yang sedang dibuat?',
+      body:
+        'Setiap klip kembali memakai gambarnya dengan gerak kamera' +
+        (videoMaking ? `, dan ${videoMaking} video yang masih dibuat dibatalkan` : '') +
+        '. File videonya masih tersimpan di proyek, jadi bisa dikembalikan dengan Urungkan (Ctrl+Z). Untuk menghapus filenya dari disk, pakai Bersihkan file video.',
+      confirm: 'Hapus semua video',
+      danger: true
+    })
+    if (!ok) return
+    await bulk(async () => {
+      const r = await record('Hapus semua video', async () => {
+        const res = await window.api.clips.detachAllVideos(project!.id)
+        load(res.bundle)
+        return res
+      })
+      toast('success', `${r.count} video dilepas dari klip.`, { label: 'Urungkan', run: () => void undo() })
+    })
+  }
+
+  const purgeVideos = async (): Promise<void> => {
+    if (!loose) return void toast('error', 'Tidak ada file video yang tidak terpakai.')
+    const ok = await confirmDialog({
+      title: `Hapus ${loose} file video dari disk?`,
+      body: 'Yang dihapus hanya video yang tidak dipasang di klip mana pun, termasuk yang tadi kamu lepas. Filenya hilang permanen dan riwayat Urungkan dikosongkan.',
+      confirm: 'Hapus file',
+      danger: true
+    })
+    if (!ok) return
+    await bulk(async () => {
+      const r = await window.api.assets.purgeVideos(project!.id)
+      load(r.bundle)
+      clearHistory()
+      toast('success', `${r.count} file video dihapus, ${sizeLabel(r.bytes)} lega.`)
+    })
+  }
+
   // Scenes added or rewritten in the script since the last visual plan.
   const stale = clips.filter(needsVisual).length
   const planVisuals = async (): Promise<void> => {
     setPlanning(true)
     try {
       await flush()
-      load(await window.api.story.visuals(project.id, 'missing'))
+      await record('Susun visual', async () => {
+        load(await window.api.story.visuals(project.id, 'missing'))
+      })
       toast('success', 'Visual adegan sudah disusun.')
     } catch (e) {
       toast('error', errorText(e))
@@ -735,6 +798,19 @@ export function StoryboardStep() {
               {clips.length} klip · {mmss(stats.total)}
             </span>
             <div className="flex-1" />
+            {(withVideo > 0 || videoMaking > 0 || loose > 0) && (
+              <Menu
+                trigger={(open) => (
+                  <Button variant="ghost" icon={<Film className="size-[17px]" />} onClick={open} title="Hapus video dari semua klip, atau bersihkan filenya">
+                    Video
+                  </Button>
+                )}
+                items={[
+                  { label: 'Hapus semua video', icon: <VideoOff className="size-4" />, danger: true, run: () => void removeAllVideos() },
+                  { label: `Bersihkan file video${loose ? ` (${loose})` : ''}`, icon: <Trash2 className="size-4" />, run: () => void purgeVideos() }
+                ]}
+              />
+            )}
             <Button
               variant="ghost"
               icon={<Shuffle className="size-[17px]" />}

@@ -1,14 +1,29 @@
 import { execFile } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
 import ffmpegStatic from 'ffmpeg-static'
 import { visualSourceOf } from '@shared/script'
 import { MIN_ITEM_MS, splitNarration, voiceSpan, wordGapNear } from '@shared/timeline'
-import type { Asset, Clip, ProjectBundle } from '@shared/types'
+import type { Asset, Clip, LinkRestore, ProjectBundle } from '@shared/types'
 import { emit } from './events'
 import { assetAbsPath, binPath } from './paths'
-import { getAsset, getBundle, getClip, insertAsset, insertClipAfter, patchClip, patchClipText, touchProject } from './repo'
+import { cancelJob } from './jobs'
+import {
+  activeJobFor,
+  clipsOf,
+  deleteAssets,
+  getAsset,
+  getBundle,
+  getCharacter,
+  getClip,
+  insertAsset,
+  insertClipAfter,
+  patchClip,
+  patchClipText,
+  setCharacterSheet,
+  touchProject
+} from './repo'
 
 /**
  * Timeline edits that touch files or several clips at once: splitting a clip in two and taking a voice off
@@ -124,6 +139,65 @@ export async function splitClip(clipId: string, atMs: number): Promise<ProjectBu
   patchClip(clip.id, { durationMs: at, ...voiceA })
   touchProject(clip.projectId)
   return getBundle(clip.projectId)
+}
+
+/** Back to the picture with a camera move; the video file stays in the project, so undo can bring it back. */
+const NO_VIDEO: Partial<Clip> = { videoAssetId: null, motionType: 'camera', mediaInMs: 0 }
+
+/** Takes the video off one clip. A video still being made for it is cancelled, or it would land again. */
+export async function detachVideo(clipId: string): Promise<void> {
+  const running = activeJobFor({ clipId }, 'video')
+  if (running) await cancelJob(running.id)
+  patchClip(clipId, NO_VIDEO)
+  emit.clip({ clipId, patch: NO_VIDEO })
+  touchProject(getClip(clipId).projectId)
+}
+
+/** Takes the video off every clip of a project, whether AI-made or imported. */
+export async function detachAllVideos(projectId: string): Promise<{ bundle: ProjectBundle; count: number }> {
+  const withVideo = clipsOf(projectId).filter((c) => c.videoAssetId || c.motionType === 'video' || activeJobFor({ clipId: c.id }, 'video'))
+  const count = withVideo.filter((c) => c.videoAssetId).length
+  for (const c of withVideo) await detachVideo(c.id)
+  return { bundle: getBundle(projectId), count }
+}
+
+/** Deletes the files of videos no clip uses any more, to free disk space. Undo can no longer bring them back. */
+export function purgeUnusedVideos(projectId: string): { bundle: ProjectBundle; count: number; bytes: number } {
+  const bundle = getBundle(projectId)
+  const used = new Set(bundle.clips.map((c) => c.videoAssetId).filter(Boolean))
+  const loose = bundle.assets.filter((a) => a.kind === 'video' && !used.has(a.id))
+  let bytes = 0
+  for (const a of loose) {
+    const abs = assetAbsPath(projectId, a.localPath)
+    if (!existsSync(abs)) continue
+    bytes += statSync(abs).size
+    rmSync(abs, { force: true })
+  }
+  deleteAssets(loose.map((a) => a.id))
+  touchProject(projectId)
+  return { bundle: getBundle(projectId), count: loose.length, bytes }
+}
+
+/**
+ * Puts asset links (and the text a clip's visual plan was made from) back after undo or redo. The editor's own
+ * save never touches them, so a link restored here must point at an asset of the same project.
+ */
+export function restoreLinks(projectId: string, links: LinkRestore): void {
+  const ok = (id: string | null): string | null => (id && getAsset(id)?.projectId === projectId ? id : null)
+  const clipIds = new Set(clipsOf(projectId).map((c) => c.id))
+  for (const l of links.clips) {
+    if (!clipIds.has(l.id)) continue
+    patchClip(l.id, { imageAssetId: ok(l.imageAssetId), videoAssetId: ok(l.videoAssetId), audioAssetId: ok(l.audioAssetId) })
+    patchClipText(l.id, { visualSource: l.visualSource })
+  }
+  for (const l of links.characters) {
+    try {
+      if (getCharacter(l.id).projectId === projectId) setCharacterSheet(l.id, ok(l.sheetAssetId))
+    } catch {
+      // The character no longer exists.
+    }
+  }
+  touchProject(projectId)
 }
 
 /** Takes the voice off a clip (the audio stays in the clip's history and can be picked again). */

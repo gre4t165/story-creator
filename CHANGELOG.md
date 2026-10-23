@@ -8,6 +8,22 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+## [1.2.0] - 2026-10-23
+
+### Ditambahkan
+- **Urungkan dan ulangi (Undo/Redo)** untuk semua pekerjaan di proyek: naskah, prompt, durasi, gerak, transisi,
+  overlay, musik, SFX, caption, pemeran, tambah/hapus/pindah klip, sampai aksi besar seperti potong klip, impor
+  gambar/video/suara, "Susun naskah", dan "Susun visual". Tombol di header proyek (label menyebut aksinya) dan
+  pintasan Ctrl+Z, Ctrl+Y atau Ctrl+Shift+Z. Edit beruntun (mengetik, menggeser slider) menjadi satu langkah, begitu
+  juga "Acak gerak" dan "Musik + atur gambar". Riwayat menyimpan 100 langkah per proyek yang sedang dibuka. Gambar
+  atau suara yang baru selesai dibuat tidak ikut hilang saat mengurungkan hal lain.
+- **Hapus semua video** (Storyboard › Video): setiap klip kembali ke gambar dengan gerak kamera, video yang masih
+  dibuat dibatalkan, dan bisa diurungkan. Ada juga **Hapus video** per klip (Storyboard dan Inspector editor).
+- **Bersihkan file video**: menghapus dari disk file video yang tidak terpasang di klip mana pun (Urungkan dikosongkan).
+
+### Diubah
+- Menekan Ctrl+Z di dalam kotak teks tetap mengurungkan ketikan di kotak itu; di luar kotak teks, ia mengurungkan proyek.
+
 ## [1.1.1] - 2026-10-22
 
 ### Diubah

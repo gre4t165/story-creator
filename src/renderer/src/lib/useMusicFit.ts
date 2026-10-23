@@ -44,9 +44,12 @@ export function useMusicFit(): { busy: boolean; fit(pickNew: boolean): Promise<v
       const musicMs = Math.max(1000, music.durationMs - inMs)
       const { durations, fits } = fitClipsToMusic(clips, (id) => assets[id]?.durationMs ?? null, musicMs, beats)
       const st = useProject.getState()
-      clips.forEach((c, i) => st.updateClip(c.id, { durationMs: durations[i] }))
-      // The song now runs the whole video.
-      st.updateEditor({ musicAssetId: music.id, musicStartMs: 0, musicInMs: inMs, musicEndMs: null })
+      // Every clip length and the song itself change together, so one undo puts all of it back.
+      st.batch('Sesuaikan gambar dengan musik', () => {
+        clips.forEach((c, i) => st.updateClip(c.id, { durationMs: durations[i] }))
+        // The song now runs the whole video.
+        st.updateEditor({ musicAssetId: music.id, musicStartMs: 0, musicInMs: inMs, musicEndMs: null })
+      })
       toast(
         fits ? 'success' : 'error',
         fits
@@ -65,8 +68,8 @@ export function useMusicFit(): { busy: boolean; fit(pickNew: boolean): Promise<v
 
 /** A different camera move on every picture, neighbours never the same. */
 export function shuffleMotions(): number {
-  const { clips, updateClip } = useProject.getState()
+  const { clips, updateClip, batch } = useProject.getState()
   const moves = randomMotions(clips.length)
-  clips.forEach((c, i) => updateClip(c.id, moves[i]))
+  batch('Acak gerak', () => clips.forEach((c, i) => updateClip(c.id, moves[i])))
   return clips.length
 }

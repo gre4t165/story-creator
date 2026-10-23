@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AudioLines, Check, Clapperboard, Copy, ExternalLink, Film, Layers, Mic, Move, Music, Play, Sparkles, Type, Volume2, X } from 'lucide-react'
+import { AudioLines, Check, Clapperboard, Copy, ExternalLink, Film, Layers, Mic, Move, Music, Play, Sparkles, Type, VideoOff, Volume2, X } from 'lucide-react'
 import {
   CAPTION_FONTS,
   CAPTION_POSITIONS,
@@ -66,7 +66,7 @@ const VIDEO_CAMERA_OPTIONS = [
 ]
 
 function ClipTab({ clip, index }: { clip: Clip; index: number }) {
-  const { assets, jobs, updateClip, flush } = useProject()
+  const { assets, jobs, updateClip, flush, record } = useProject()
   const { toast } = useApp()
   const image = clip.imageAssetId ? assets[clip.imageAssetId] : null
   const video = clip.videoAssetId ? assets[clip.videoAssetId] : null
@@ -93,7 +93,7 @@ function ClipTab({ clip, index }: { clip: Clip; index: number }) {
       {clip.motionType === 'video' ? (
         <Section title="Video AI">
           {video ? (
-            <p className="text-[13px] text-ink-2">Klip ini memakai video dari Higgsfield.</p>
+            <p className="text-[13px] text-ink-2">{video.provider === 'import' ? 'Klip ini memakai video yang kamu impor.' : 'Klip ini memakai video dari Higgsfield.'}</p>
           ) : (
             <p className="text-[13px] text-ink-2">Video belum dibuat. Sampai video siap, pratinjau memakai gambar diam.</p>
           )}
@@ -111,6 +111,17 @@ function ClipTab({ clip, index }: { clip: Clip; index: number }) {
             <Button size="sm" icon={<Move className="size-4" />} onClick={() => updateClip(clip.id, { motionType: 'camera' })}>
               Kembali ke gerak kamera
             </Button>
+            {(video || isRunning(videoJob)) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<VideoOff className="size-4" />}
+                title="Lepas video dari klip ini. Bisa diurungkan (Ctrl+Z)."
+                onClick={() => void run(() => record('Hapus video klip', () => window.api.clips.detachVideo(clip.id)))}
+              >
+                {isRunning(videoJob) ? 'Batalkan video' : 'Hapus video'}
+              </Button>
+            )}
           </div>
           {isRunning(videoJob) && (
             <span className="text-xs text-sun-ink">

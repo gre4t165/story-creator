@@ -377,6 +377,12 @@ export interface ImportResult {
   message: string
 }
 
+/** Asset links of clips and characters, put back by undo and redo (the editor never owns links itself). */
+export interface LinkRestore {
+  clips: { id: string; imageAssetId: string | null; videoAssetId: string | null; audioAssetId: string | null; visualSource: string | null }[]
+  characters: { id: string; sheetAssetId: string | null }[]
+}
+
 /** A narrator voice for one clip instead of the project's own (from a voice JSON). */
 export interface TtsOverride {
   provider?: TtsProvider

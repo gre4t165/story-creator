@@ -46,3 +46,10 @@ export function creditLabel(n: number): string {
 export function usdLabel(n: number): string {
   return `US$${n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 3 : 2 })}`
 }
+
+/** "12 MB", "1,4 GB": a file size for people. */
+export function sizeLabel(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  const mb = bytes / (1024 * 1024)
+  return mb < 1024 ? `${Math.round(mb)} MB` : `${(mb / 1024).toFixed(1).replace('.', ',')} GB`
+}

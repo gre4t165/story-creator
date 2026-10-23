@@ -85,9 +85,26 @@ Aturan edit (`renderer/src/pages/project/editor/Timeline.tsx`):
   `layoutCaptionLines` yang sama dengan pratinjau.
 - Kata yang sedang diucapkan diwarnai lewat event per kata (`\c`).
 
+## Urungkan dan ulangi (`store/project.ts`, `lib/history.ts`)
+
+- Setiap aksi pengguna di store (`updateClip`, `updateEditor`, `updateProject`, `updateCharacter`, `addClip`,
+  `removeClip`, `moveClip`, `addCharacter`, `removeCharacter`) tercatat lewat `edit()` sebagai pasangan keadaan
+  sebelum dan sesudah. Edit dengan kunci sama dalam 1 detik (mengetik, menggeser slider) digabung jadi satu langkah.
+  `batch(label, fn)` menggabungkan beberapa edit; `record(label, fn)` mencatat aksi yang dikerjakan proses main
+  (potong klip, impor, susun naskah/visual, hapus video).
+- Yang dicatat: proyek (tanpa `step`, `status`, sampul), pemeran, dan klip termasuk tautan asetnya. Aset dan job tidak.
+- Mengurungkan **tidak** menimpa dengan salinan lama. `transform(cur, from, to)` hanya menerapkan *selisih* langkah itu
+  ke keadaan sekarang, jadi gambar yang baru jadi atau pengeditan lain tidak ikut hilang. Fungsinya murni dan bisa diuji
+  di Node dengan esbuild.
+- Tautan aset dimiliki proses main dan tidak ikut `saveSnapshot`. Setelah undo/redo, `projects:setLinks`
+  (`restoreLinks` di `editing.ts`) memasang kembali tautan klip, `visualSource`, dan lembar karakter.
+- Hasil job yang datang belakangan (gambar, video, suara dari antrean) tidak dicatat sebagai langkah.
+- Riwayat dikosongkan saat proyek ditutup atau setelah "Bersihkan file video".
+
 ## Menambah fitur di editor: daftar periksa
 
 - Aturan baru yang memengaruhi hasil? Tulis di `src/shared/` dan pakai di Player **dan** exporter.
 - Nilai baru per klip? Ikuti [data-model.md](data-model.md#menambah-kolom-klip).
 - Item timeline baru? Beri klik → tab Inspector, gaya pilih `SELECTED`, dan aksi Hapus di `EditorStep`.
+- Mengubah proyek? Lewat store (`updateX`) supaya bisa diurungkan; aksi lewat IPC yang mengubah klip dibungkus `record()`.
 - Uji ekspor: durasi video = jumlah durasi klip, durasi audio sama dengan video, cuplikan frame di sambungan.

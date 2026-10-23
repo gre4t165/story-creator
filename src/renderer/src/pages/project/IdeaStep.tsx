@@ -104,7 +104,7 @@ function VoicePicker({ provider, language, value, onChange }: { provider: TtsPro
 }
 
 export function IdeaStep() {
-  const { project, clips, updateProject, flush, load } = useProject()
+  const { project, clips, updateProject, flush, load, record } = useProject()
   const { toast, go } = useApp()
   const [busy, setBusy] = useState(false)
   const [writer, setWriter] = useState<{ provider: LlmProvider; model: string } | null>(null)
@@ -159,8 +159,11 @@ export function IdeaStep() {
     setBusy(true)
     try {
       await flush()
-      const bundle = await window.api.story.script(project.id)
-      load(bundle)
+      const bundle = await record('Susun naskah', async () => {
+        const b = await window.api.story.script(project.id)
+        load(b)
+        return b
+      })
       toast('success', `${bundle.clips.length} adegan siap. Baca dan rapikan naskahnya dulu.`)
     } catch (e) {
       toast('error', errorText(e))

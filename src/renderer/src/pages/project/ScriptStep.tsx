@@ -164,7 +164,7 @@ function SceneCard({ clip, index, total, onInsert }: { clip: Clip; index: number
 
 /** Step 2: read and shape the scene-by-scene script before any pictures are made. */
 export function ScriptStep() {
-  const { project, clips, addClip, updateProject, flush, load } = useProject()
+  const { project, clips, addClip, updateProject, flush, load, record } = useProject()
   const { toast, go } = useApp()
   const [busy, setBusy] = useState<'missing' | 'all' | null>(null)
   const [writer, setWriter] = useState<{ provider: LlmProvider; model: string } | null>(null)
@@ -207,8 +207,9 @@ export function ScriptStep() {
     setBusy(mode)
     try {
       await flush()
-      const bundle = await window.api.story.visuals(project.id, mode)
-      load(bundle)
+      await record('Susun visual', async () => {
+        load(await window.api.story.visuals(project.id, mode))
+      })
       toast('success', 'Visual tiap adegan siap. Sekarang buat gambar dan suaranya.')
     } catch (e) {
       toast('error', errorText(e))

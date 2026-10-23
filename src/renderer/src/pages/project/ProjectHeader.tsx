@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { AlertCircle, ArrowLeft, Check, CheckCircle2, Loader2, Pencil, Save, SlidersHorizontal } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, Loader2, Pencil, Redo2, Save, SlidersHorizontal, Undo2 } from 'lucide-react'
 import type { Step } from '@shared/types'
 import { Button, IconButton, Kbd, cx } from '../../components/ui'
 import { relativeTime } from '../../lib/format'
@@ -48,7 +48,8 @@ function SaveStatus() {
 }
 
 export function ProjectHeader({ doneSteps, right }: { doneSteps: Step[]; right?: ReactNode }) {
-  const { project, updateProject, save, flush } = useProject()
+  const { project, updateProject, save, flush, undo, redo } = useProject()
+  const history = useProject((s) => s.history)
   const { go } = useApp()
   const [editing, setEditing] = useState(false)
   if (!project) return null
@@ -137,6 +138,14 @@ export function ProjectHeader({ doneSteps, right }: { doneSteps: Step[]; right?:
       </nav>
 
       <div className="flex items-center justify-end gap-2.5">
+        <div className="flex items-center gap-1.5">
+          <IconButton label={history.undo ? `Urungkan: ${history.undo} (Ctrl+Z)` : 'Urungkan (Ctrl+Z)'} disabled={!history.undo} onClick={() => void undo()}>
+            <Undo2 className="size-[18px]" />
+          </IconButton>
+          <IconButton label={history.redo ? `Ulangi: ${history.redo} (Ctrl+Y)` : 'Ulangi (Ctrl+Y)'} disabled={!history.redo} onClick={() => void redo()}>
+            <Redo2 className="size-[18px]" />
+          </IconButton>
+        </div>
         <Button icon={<Save className="size-[17px]" />} onClick={() => void save()}>
           Simpan
           <Kbd>Ctrl S</Kbd>

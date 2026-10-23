@@ -21,7 +21,8 @@ const api: StudioApi = {
     get: call('projects:get'),
     save: call('projects:save'),
     remove: call('projects:remove'),
-    duplicate: call('projects:duplicate')
+    duplicate: call('projects:duplicate'),
+    setLinks: call('projects:setLinks')
   },
   story: {
     script: call('story:script'),
@@ -43,11 +44,14 @@ const api: StudioApi = {
   },
   clips: {
     split: call('clips:split'),
-    detachVoice: call('clips:detachVoice')
+    detachVoice: call('clips:detachVoice'),
+    detachVideo: call('clips:detachVideo'),
+    detachAllVideos: call('clips:detachAllVideos')
   },
   assets: {
     setActive: call('assets:setActive'),
     setWords: call('assets:setWords'),
+    purgeVideos: call('assets:purgeVideos'),
     pickMusic: call('assets:pickMusic'),
     pickImage: call('assets:pickImage'),
     musicBeats: call('assets:musicBeats')

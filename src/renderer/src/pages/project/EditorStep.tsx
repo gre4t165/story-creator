@@ -22,7 +22,7 @@ import { removeSfx, useSfxUi } from './editor/SfxPanel'
 import { Timeline, overlayLanes, sfxLanes, type TimelinePick, type TimelineSelection } from './editor/Timeline'
 
 export function EditorStep() {
-  const { project, assets, selectedClipId, select, clips, updateClip, updateEditor, removeClip, flush, load } = useProject()
+  const { project, assets, selectedClipId, select, clips, updateClip, updateEditor, removeClip, flush, load, record } = useProject()
   const { toast } = useApp()
   const { items, total, chunks } = useTimeline()
   const [tab, setTab] = useState<InspectorTab>('klip')
@@ -136,8 +136,11 @@ export function EditorStep() {
     }
     try {
       await flush()
-      const bundle = await window.api.clips.split(target.item.clip.id, Math.round((t - target.item.start) * 1000))
-      load(bundle)
+      const bundle = await record('Potong klip', async () => {
+        const b = await window.api.clips.split(target.item.clip.id, Math.round((t - target.item.start) * 1000))
+        load(b)
+        return b
+      })
       const i = bundle.clips.findIndex((c) => c.id === target.item.clip.id)
       const next = bundle.clips[i + 1]
       if (next) {
@@ -165,7 +168,7 @@ export function EditorStep() {
         if (ok) removeClip(selection.id)
       } else if (selection.kind === 'voice') {
         await flush()
-        await window.api.clips.detachVoice(selection.id)
+        await record('Lepas suara', () => window.api.clips.detachVoice(selection.id))
       } else if (selection.kind === 'caption') {
         const chunk = chunks.find((c) => c.source?.key === selection.key && c.source.from === selection.from)
         const asset = assets[selection.key]

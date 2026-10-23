@@ -10,6 +10,7 @@ import type {
   WordTiming,
   ExportOptions,
   ImportResult,
+  LinkRestore,
   Job,
   KeyStatus,
   KeyTestResult,
@@ -34,6 +35,8 @@ export interface StudioApi {
     save(snapshot: ProjectSnapshot): Promise<{ updatedAt: number }>
     remove(id: string): Promise<void>
     duplicate(id: string): Promise<ProjectSummary>
+    /** Puts asset links back after undo or redo (the save never touches them). */
+    setLinks(projectId: string, links: LinkRestore): Promise<void>
   }
   story: {
     /** Idea → scene-by-scene script (story and voice-over). */
@@ -66,11 +69,17 @@ export interface StudioApi {
     split(clipId: string, atMs: number): Promise<ProjectBundle>
     /** Takes the voice off a clip. */
     detachVoice(clipId: string): Promise<void>
+    /** Takes the video off a clip: it goes back to its picture with a camera move. */
+    detachVideo(clipId: string): Promise<void>
+    /** Takes the video off every clip of the project. The files stay until purgeVideos. */
+    detachAllVideos(projectId: string): Promise<{ bundle: ProjectBundle; count: number }>
   }
   assets: {
     setActive(clipId: string, assetId: string): Promise<void>
     /** Caption words of a voice clip, after the text was fixed by hand. */
     setWords(assetId: string, words: WordTiming[]): Promise<Asset>
+    /** Deletes the files of videos no clip uses, to free disk space. */
+    purgeVideos(projectId: string): Promise<{ bundle: ProjectBundle; count: number; bytes: number }>
     pickMusic(projectId: string): Promise<Asset | null>
     /** A logo or watermark image for an overlay. */
     pickImage(projectId: string): Promise<Asset | null>

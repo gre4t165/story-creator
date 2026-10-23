@@ -26,7 +26,7 @@ Kalau kode di `src` diubah, hapus folder `out` (atau jalankan `npm run build`) s
 3. **Storyboard**: setiap adegan punya gambar (Higgsfield), suara narasi (TTS), dan gerak: gerak kamera gratis atau video AI. Suara narasi dibuat dalam satu rekaman utuh lalu dipotong otomatis per adegan, supaya suara dan intonasinya konsisten. Pratinjau gerak kamera berputar otomatis dan tetap terlihat saat panel digulir.
 4. **Editor**: pratinjau langsung dengan gerak kamera, transisi, caption karaoke, musik latar, serta overlay logo, watermark, atau teks yang bisa digeser langsung di pratinjau. Lalu ekspor MP4 dengan FFmpeg.
 
-   Timeline-nya seperti editor video biasa: tarik tepi klip untuk memanjangkan atau memendekkan (video tidak bisa melebihi panjang aslinya; tepi kiri memotong awal video), tarik tepi atau geser suara, caption, musik, dan overlay, **Potong** (S) membelah klip di playhead (suara dan naskahnya ikut terbelah di jeda antar kata), dan **Hapus** (Delete) menghapus item yang dipilih. Tombol bulat di antara klip membuka panel transisi dengan pratinjau langsung.
+   Timeline-nya seperti editor video biasa: tarik tepi klip untuk memanjangkan atau memendekkan (video tidak bisa melebihi panjang aslinya; tepi kiri memotong awal video), tarik tepi atau geser suara, caption, musik, dan overlay, **Potong** (S) membelah klip di playhead (suara dan naskahnya ikut terbelah di jeda antar kata), dan **Hapus** (Delete) menghapus item yang dipilih. **Urungkan** (Ctrl+Z) dan **Ulangi** (Ctrl+Y) ada di header proyek untuk semua perubahan. Tombol bulat di antara klip membuka panel transisi dengan pratinjau langsung.
 
 ## Durasi dan suara
 

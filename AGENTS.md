@@ -76,6 +76,9 @@ docs/              dokumentasi pengembang
    [docs/konvensi.md](docs/konvensi.md).
 9. Jangan mengulang bug yang sudah diperbaiki. Baca [docs/keputusan-teknis.md](docs/keputusan-teknis.md) sebelum
    mengubah ekspor, narasi, Whisper, caption, atau pratinjau video.
+10. **Semua perubahan proyek harus bisa diurungkan.** Ubah proyek lewat store (`updateClip`, `updateEditor`, dst.), jangan
+    `set()` langsung; aksi IPC yang mengubah klip dibungkus `record()` di renderer. Lihat
+    [docs/editor-dan-ekspor.md](docs/editor-dan-ekspor.md#urungkan-dan-ulangi-storeprojectts-libhistoryts).
 
 ## Cara menguji perubahan
 

@@ -656,7 +656,7 @@ export function patchClipText(
     .run(...entries.map(([, v]) => v), id)
 }
 
-export function setCharacterSheet(id: string, assetId: string): void {
+export function setCharacterSheet(id: string, assetId: string | null): void {
   getDb().prepare('UPDATE characters SET sheet_asset_id = ? WHERE id = ?').run(assetId, id)
 }
 
@@ -709,6 +709,12 @@ export function insertAsset(a: {
       Date.now()
     )
   return getAsset(id)!
+}
+
+/** Forgets assets (rows only; the caller deletes their files). */
+export function deleteAssets(ids: string[]): void {
+  const del = getDb().prepare('DELETE FROM assets WHERE id = ?')
+  getDb().transaction(() => ids.forEach((id) => del.run(id)))()
 }
 
 export function updateAssetMeta(id: string, meta: AssetMeta): void {
