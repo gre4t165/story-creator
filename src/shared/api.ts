@@ -71,15 +71,21 @@ export interface StudioApi {
     detachVoice(clipId: string): Promise<void>
     /** Takes the video off a clip: it goes back to its picture with a camera move. */
     detachVideo(clipId: string): Promise<void>
-    /** Takes the video off every clip of the project. The files stay until purgeVideos. */
+    /** Takes the picture off a clip. */
+    detachImage(clipId: string): Promise<void>
+    /** Takes the video off every clip of the project. The files stay until purgeUnused. */
     detachAllVideos(projectId: string): Promise<{ bundle: ProjectBundle; count: number }>
+    /** Takes the picture off every clip (character sheets stay). */
+    detachAllImages(projectId: string): Promise<{ bundle: ProjectBundle; count: number }>
+    /** Takes the narration voice off every clip and stops a take in progress. */
+    detachAllVoices(projectId: string): Promise<{ bundle: ProjectBundle; count: number }>
   }
   assets: {
     setActive(clipId: string, assetId: string): Promise<void>
     /** Caption words of a voice clip, after the text was fixed by hand. */
     setWords(assetId: string, words: WordTiming[]): Promise<Asset>
-    /** Deletes the files of videos no clip uses, to free disk space. */
-    purgeVideos(projectId: string): Promise<{ bundle: ProjectBundle; count: number; bytes: number }>
+    /** Deletes the files of pictures, voices and videos no clip uses any more, to free disk space. */
+    purgeUnused(projectId: string): Promise<{ bundle: ProjectBundle; count: number; bytes: number }>
     pickMusic(projectId: string): Promise<Asset | null>
     /** A logo or watermark image for an overlay. */
     pickImage(projectId: string): Promise<Asset | null>

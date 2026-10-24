@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ExternalLink } from 'lucide-react'
 
 const CHANNEL_URL = 'https://youtube.com/bangtutorial'
-const TUTORIAL_ID = '5EbWJo3VnRA'
 
-/** Settings › Tentang aplikasi: version, the tutorial video, credits and licences. */
+/** Settings › Tentang aplikasi: version, credits and licences. */
 export function AboutSection() {
   const [version, setVersion] = useState('')
   useEffect(() => {
@@ -27,32 +25,6 @@ export function AboutSection() {
           </button>
         </div>
         {version && <span className="rounded-full border border-line-2 px-3 py-1 font-mono text-xs text-ink">Versi {version}</span>}
-      </div>
-
-      <div className="flex flex-col gap-2.5">
-        <div className="flex flex-wrap items-baseline gap-x-2">
-          <h2 className="text-base font-semibold text-ink">Tutorial</h2>
-          <span className="text-[13px] text-muted">Cara membuat video dari ide sampai ekspor dengan Story Creator</span>
-        </div>
-        {/* No autoplay: a play the viewer starts is what YouTube counts as a view. */}
-        <div className="overflow-hidden rounded-xl border border-line-2 bg-ink">
-          <iframe
-            src={`https://www.youtube.com/embed/${TUTORIAL_ID}?rel=0&playsinline=1`}
-            title="Tutorial Story Creator"
-            className="block aspect-video w-full"
-            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => open(`https://youtu.be/${TUTORIAL_ID}`)}
-          className="inline-flex items-center gap-1.5 self-start text-[13px] font-semibold text-accent-dark hover:underline"
-        >
-          Tonton di YouTube
-          <ExternalLink className="size-3.5" />
-        </button>
       </div>
 
       <p>Semua proyek, gambar, video, dan suara disimpan di komputer ini.</p>

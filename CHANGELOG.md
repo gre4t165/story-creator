@@ -8,6 +8,19 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+### Ditambahkan
+- **Hapus semua gambar, suara, dan video** (Storyboard › Hapus media). Tiap aksi melepas medianya dari semua klip,
+  membatalkan yang masih dibuat supaya tidak muncul lagi, dan bisa diurungkan (Ctrl+Z atau tombol Urungkan di pesan).
+  Lembar karakter, musik, dan SFX tidak berubah. Sampul proyek ikut hilang atau kembali bersama gambarnya.
+- **Hapus gambar** dan **Hapus suara** per klip di panel klip Storyboard.
+- **Bersihkan file tak terpakai** menggantikan "Bersihkan file video": menghapus dari disk gambar, suara, dan video
+  yang tidak terpasang di mana pun (termasuk versi lama gambar yang dibuat ulang). Lembar karakter, musik, dan logo
+  tidak disentuh. Aturan "tidak terpakai" ada di `shared/media.ts`, dipakai penghitung di layar dan penghapus di main.
+
+### Dihapus
+- **Video tutorial YouTube yang disematkan** di halaman Tentang aplikasi. Header Referer untuk YouTube dan izin
+  iframe di CSP ikut dihapus; sekarang tidak ada iframe sama sekali (`frame-src 'none'`).
+
 ## [1.2.0] - 2026-10-23
 
 ### Ditambahkan

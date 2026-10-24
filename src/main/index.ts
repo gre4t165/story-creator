@@ -1,6 +1,6 @@
 import { existsSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, BrowserWindow, session, shell } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 import { closeDb, getDb } from './db'
 import { attachDevHarness, prepareHarness } from './devharness'
 import { resumeJobs } from './generation'
@@ -38,17 +38,6 @@ app.commandLine.appendSwitch('disable-direct-composition-video-overlays')
 
 registerSchemes()
 
-/**
- * YouTube only plays embedded videos for embedders that identify themselves with an HTTP Referer, and a
- * page loaded from file:// sends none (the player then shows error 153). The app identifies itself with
- * its app ID, as YouTube asks of apps that are not websites.
- */
-function identifyToYouTube(): void {
-  session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['https://www.youtube.com/embed/*'] }, (details, done) => {
-    done({ requestHeaders: { ...details.requestHeaders, Referer: 'https://id.bangtutorial.bangstory/' } })
-  })
-}
-
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
@@ -68,7 +57,6 @@ function createWindow(): void {
   })
 
   win.once('ready-to-show', () => win.show())
-  identifyToYouTube()
   attachDevHarness(win)
 
   win.webContents.setWindowOpenHandler(({ url }) => {

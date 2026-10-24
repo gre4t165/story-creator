@@ -293,13 +293,21 @@ export function ConfirmHost() {
 // ---------- popover menu ----------
 
 /** A small action menu. It opens in a floating layer, so cards with hidden overflow cannot cut it off. */
-export function Menu({ trigger, items }: { trigger: (open: () => void) => ReactNode; items: { label: string; icon?: ReactNode; danger?: boolean; run: () => void }[] }) {
+export function Menu({
+  trigger,
+  items,
+  width = 210
+}: {
+  trigger: (open: () => void) => ReactNode
+  items: { label: string; icon?: ReactNode; danger?: boolean; run: () => void }[]
+  width?: number
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   return (
     <div ref={ref} className="relative inline-flex">
       {trigger(() => setOpen((o) => !o))}
-      <Popover anchor={ref} open={open} onClose={() => setOpen(false)} width={210} align="right" maxHeight={320} className="p-1">
+      <Popover anchor={ref} open={open} onClose={() => setOpen(false)} width={width} align="right" maxHeight={320} className="p-1">
         {items.map((it) => (
           <button
             key={it.label}

@@ -99,7 +99,10 @@ Aturan edit (`renderer/src/pages/project/editor/Timeline.tsx`):
 - Tautan aset dimiliki proses main dan tidak ikut `saveSnapshot`. Setelah undo/redo, `projects:setLinks`
   (`restoreLinks` di `editing.ts`) memasang kembali tautan klip, `visualSource`, dan lembar karakter.
 - Hasil job yang datang belakangan (gambar, video, suara dari antrean) tidak dicatat sebagai langkah.
-- Riwayat dikosongkan saat proyek ditutup atau setelah "Bersihkan file video".
+- Riwayat dikosongkan saat proyek ditutup atau setelah "Bersihkan file tak terpakai".
+- "Hapus semua gambar/suara/video" (`detachAll*` di `editing.ts`) hanya melepas tautan di klip, jadi file-nya tetap ada dan
+  bisa dikembalikan lewat Urungkan. Yang masih dibuat di antrean dibatalkan lebih dulu agar tidak terpasang lagi.
+  Sampul proyek mengikuti gambar pertama yang terpasang (`syncCover`), juga saat Urungkan.
 
 ## Menambah fitur di editor: daftar periksa
 

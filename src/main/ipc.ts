@@ -36,7 +36,7 @@ import { cancelJob } from './jobs'
 import { generateNarration, syncCaptions } from './narration'
 import { cancelDownload, downloadModel, openModelFolder, removeModel, whisperStatus } from './whisper'
 import { assetAbsPath } from './paths'
-import { detachAllVideos, detachVideo, detachVoice, purgeUnusedVideos, restoreLinks, splitClip } from './editing'
+import { detachAllImages, detachAllVideos, detachAllVoices, detachImage, detachVideo, detachVoice, purgeUnusedMedia, restoreLinks, splitClip } from './editing'
 import { emit } from './events'
 import {
   createProject,
@@ -135,8 +135,11 @@ export function registerIpc(): void {
   handle('clips:split', (clipId: string, atMs: number) => splitClip(clipId, Number(atMs)))
   handle('clips:detachVoice', (clipId: string) => detachVoice(clipId))
   handle('clips:detachVideo', (clipId: string) => detachVideo(clipId))
+  handle('clips:detachImage', (clipId: string) => detachImage(clipId))
   handle('clips:detachAllVideos', (projectId: string) => detachAllVideos(projectId))
-  handle('assets:purgeVideos', (projectId: string) => purgeUnusedVideos(projectId))
+  handle('clips:detachAllImages', (projectId: string) => detachAllImages(projectId))
+  handle('clips:detachAllVoices', (projectId: string) => detachAllVoices(projectId))
+  handle('assets:purgeUnused', (projectId: string) => purgeUnusedMedia(projectId))
   // Caption text fixed by hand in the editor; the words keep their times.
   handle('assets:setWords', (assetId: string, words: WordTiming[]) => {
     const a = getAsset(assetId)

@@ -5,10 +5,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Clapperboard,
+  Eraser,
   FileJson,
   Music,
   Film,
   Image as ImageIcon,
+  ImageOff,
   MoreHorizontal,
   Move,
   Pause,
@@ -21,9 +23,11 @@ import {
   Trash2,
   Upload,
   VideoOff,
-  Volume2
+  Volume2,
+  VolumeX
 } from 'lucide-react'
 import { resolveImageModelId } from '@shared/freemodels'
+import { looseAssets } from '@shared/media'
 import { effectiveResolution, fitDuration, getVideoModel } from '@shared/higgsfield'
 import { CAMERA_PRESETS, MOTION_STRENGTHS, cameraAt, cameraCss } from '@shared/motion'
 import { needsVisual } from '@shared/script'
@@ -247,6 +251,17 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
               Generate ulang
             </Button>
           )}
+          {image && !isRunning(imageJob) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<ImageOff className="size-4" />}
+              title="Lepas gambar dari klip ini. Bisa diurungkan (Ctrl+Z)."
+              onClick={() => void run(() => record('Hapus gambar klip', () => window.api.clips.detachImage(clip.id)))}
+            >
+              Hapus gambar
+            </Button>
+          )}
           {image && (
             <Button size="sm" icon={<Upload className="size-4" />} onClick={() => void run(() => record('Impor gambar/video', () => window.api.imports.clipFile(clip.id, 'image')))}>
               Ganti dengan gambar/video sendiri
@@ -334,6 +349,17 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
                 onClick={() => (audio.playing === voice.url ? audio.stop() : audio.play(voice.url))}
               >
                 {audio.playing === voice.url ? 'Hentikan' : 'Putar suara'}
+              </Button>
+            )}
+            {voice && (
+              <Button
+                size="sm"
+                variant="ghost"
+                icon={<VolumeX className="size-3.5" />}
+                title="Lepas suara dari klip ini. Bisa diurungkan (Ctrl+Z)."
+                onClick={() => void run(() => record('Hapus suara klip', () => window.api.clips.detachVoice(clip.id)))}
+              >
+                Hapus suara
               </Button>
             )}
             <Button
@@ -615,46 +641,72 @@ export function StoryboardStep() {
     if (ok) await bulk(() => window.api.generate.missingVideos(project!.id))
   }
 
-  const withVideo = clips.filter((c) => c.videoAssetId).length
-  const loose = Object.values(assets).filter((a) => a.kind === 'video' && !clips.some((c) => c.videoAssetId === a.id)).length
-  const videoMaking = clips.filter((c) => isRunning(jobFor(jobs, 'video', { clipId: c.id }))).length
+  /** For each kind of media: how many clips have it, how many are still being made, and what "hapus semua" does. */
+  const media = {
+    image: {
+      noun: 'gambar',
+      count: clips.filter((c) => c.imageAssetId).length,
+      making: clips.filter((c) => isRunning(jobFor(jobs, 'image', { clipId: c.id }))).length,
+      after: 'Setiap klip kehilangan gambarnya (lembar karakter tetap ada)',
+      run: () => window.api.clips.detachAllImages(project.id)
+    },
+    audio: {
+      noun: 'suara narasi',
+      count: clips.filter((c) => c.audioAssetId).length,
+      making: narration.running ? 1 : clips.filter((c) => isRunning(jobFor(jobs, 'tts', { clipId: c.id }))).length,
+      after: 'Setiap klip kehilangan suara narasinya (musik dan SFX tidak berubah)',
+      run: () => window.api.clips.detachAllVoices(project.id)
+    },
+    video: {
+      noun: 'video',
+      count: clips.filter((c) => c.videoAssetId).length,
+      making: clips.filter((c) => isRunning(jobFor(jobs, 'video', { clipId: c.id }))).length,
+      after: 'Setiap klip kembali memakai gambarnya dengan gerak kamera',
+      run: () => window.api.clips.detachAllVideos(project.id)
+    }
+  }
 
-  const removeAllVideos = async (): Promise<void> => {
-    if (!withVideo && !videoMaking) return void toast('error', 'Belum ada video di proyek ini.')
+  const removeAll = async (kind: keyof typeof media): Promise<void> => {
+    const m = media[kind]
+    if (!m.count && !m.making) return void toast('error', `Belum ada ${m.noun} di proyek ini.`)
     const ok = await confirmDialog({
-      title: withVideo ? `Hapus ${withVideo} video?` : 'Batalkan video yang sedang dibuat?',
+      title: m.count ? `Hapus ${m.count} ${m.noun}?` : `Batalkan ${m.noun} yang sedang dibuat?`,
       body:
-        'Setiap klip kembali memakai gambarnya dengan gerak kamera' +
-        (videoMaking ? `, dan ${videoMaking} video yang masih dibuat dibatalkan` : '') +
-        '. File videonya masih tersimpan di proyek, jadi bisa dikembalikan dengan Urungkan (Ctrl+Z). Untuk menghapus filenya dari disk, pakai Bersihkan file video.',
-      confirm: 'Hapus semua video',
+        m.after +
+        (m.making ? `, dan ${m.making} yang masih dibuat dibatalkan` : '') +
+        '. Filenya masih tersimpan di proyek, jadi bisa dikembalikan dengan Urungkan (Ctrl+Z). Untuk menghapusnya dari disk, pakai Bersihkan file tak terpakai.',
+      confirm: `Hapus semua ${m.noun}`,
       danger: true
     })
     if (!ok) return
     await bulk(async () => {
-      const r = await record('Hapus semua video', async () => {
-        const res = await window.api.clips.detachAllVideos(project!.id)
+      const r = await record(`Hapus semua ${m.noun}`, async () => {
+        const res = await m.run()
         load(res.bundle)
         return res
       })
-      toast('success', `${r.count} video dilepas dari klip.`, { label: 'Urungkan', run: () => void undo() })
+      toast('success', `${r.count} ${m.noun} dilepas dari klip.`, { label: 'Urungkan', run: () => void undo() })
     })
   }
 
-  const purgeVideos = async (): Promise<void> => {
-    if (!loose) return void toast('error', 'Tidak ada file video yang tidak terpakai.')
+  // Files nothing uses: what was just removed, and older versions of pictures that were made again.
+  const loose = looseAssets(project, clips, characters, Object.values(assets))
+  const purge = async (): Promise<void> => {
+    if (!loose.length) return void toast('error', 'Tidak ada file yang tidak terpakai.')
+    const n = (k: string): number => loose.filter((a) => a.kind === k).length
+    const parts = [n('image') && `${n('image')} gambar`, n('audio') && `${n('audio')} suara`, n('video') && `${n('video')} video`].filter(Boolean).join(', ')
     const ok = await confirmDialog({
-      title: `Hapus ${loose} file video dari disk?`,
-      body: 'Yang dihapus hanya video yang tidak dipasang di klip mana pun, termasuk yang tadi kamu lepas. Filenya hilang permanen dan riwayat Urungkan dikosongkan.',
+      title: `Hapus ${loose.length} file dari disk?`,
+      body: `Yang dihapus: ${parts}. Hanya file yang tidak dipasang di klip mana pun, termasuk yang tadi kamu lepas dan versi lama gambar yang dibuat ulang. Lembar karakter, musik, dan logo tidak disentuh. Filenya hilang permanen dan riwayat Urungkan dikosongkan.`,
       confirm: 'Hapus file',
       danger: true
     })
     if (!ok) return
     await bulk(async () => {
-      const r = await window.api.assets.purgeVideos(project!.id)
+      const r = await window.api.assets.purgeUnused(project.id)
       load(r.bundle)
       clearHistory()
-      toast('success', `${r.count} file video dihapus, ${sizeLabel(r.bytes)} lega.`)
+      toast('success', `${r.count} file dihapus, ${sizeLabel(r.bytes)} lega.`)
     })
   }
 
@@ -798,19 +850,20 @@ export function StoryboardStep() {
               {clips.length} klip · {mmss(stats.total)}
             </span>
             <div className="flex-1" />
-            {(withVideo > 0 || videoMaking > 0 || loose > 0) && (
-              <Menu
-                trigger={(open) => (
-                  <Button variant="ghost" icon={<Film className="size-[17px]" />} onClick={open} title="Hapus video dari semua klip, atau bersihkan filenya">
-                    Video
-                  </Button>
-                )}
-                items={[
-                  { label: 'Hapus semua video', icon: <VideoOff className="size-4" />, danger: true, run: () => void removeAllVideos() },
-                  { label: `Bersihkan file video${loose ? ` (${loose})` : ''}`, icon: <Trash2 className="size-4" />, run: () => void purgeVideos() }
-                ]}
-              />
-            )}
+            <Menu
+              width={260}
+              trigger={(open) => (
+                <Button variant="ghost" icon={<Eraser className="size-[17px]" />} onClick={open} title="Hapus semua gambar, suara, atau video, atau bersihkan filenya dari disk">
+                  Hapus media
+                </Button>
+              )}
+              items={[
+                { label: `Hapus semua gambar (${media.image.count})`, icon: <ImageOff className="size-4" />, danger: true, run: () => void removeAll('image') },
+                { label: `Hapus semua suara (${media.audio.count})`, icon: <VolumeX className="size-4" />, danger: true, run: () => void removeAll('audio') },
+                { label: `Hapus semua video (${media.video.count})`, icon: <VideoOff className="size-4" />, danger: true, run: () => void removeAll('video') },
+                { label: `Bersihkan file tak terpakai (${loose.length})`, icon: <Trash2 className="size-4" />, run: () => void purge() }
+              ]}
+            />
             <Button
               variant="ghost"
               icon={<Shuffle className="size-[17px]" />}

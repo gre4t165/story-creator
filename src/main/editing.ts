@@ -3,20 +3,23 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { dirname } from 'node:path'
 import ffmpegStatic from 'ffmpeg-static'
+import { looseAssets } from '@shared/media'
 import { visualSourceOf } from '@shared/script'
 import { MIN_ITEM_MS, splitNarration, voiceSpan, wordGapNear } from '@shared/timeline'
-import type { Asset, Clip, LinkRestore, ProjectBundle } from '@shared/types'
+import type { Asset, Clip, JobKind, LinkRestore, ProjectBundle } from '@shared/types'
 import { emit } from './events'
 import { assetAbsPath, binPath } from './paths'
 import { cancelJob } from './jobs'
 import {
   activeJobFor,
+  activeProjectJob,
   clipsOf,
   deleteAssets,
   getAsset,
   getBundle,
   getCharacter,
   getClip,
+  getProject,
   insertAsset,
   insertClipAfter,
   patchClip,
@@ -144,28 +147,74 @@ export async function splitClip(clipId: string, atMs: number): Promise<ProjectBu
 /** Back to the picture with a camera move; the video file stays in the project, so undo can bring it back. */
 const NO_VIDEO: Partial<Clip> = { videoAssetId: null, motionType: 'camera', mediaInMs: 0 }
 
-/** Takes the video off one clip. A video still being made for it is cancelled, or it would land again. */
-export async function detachVideo(clipId: string): Promise<void> {
-  const running = activeJobFor({ clipId }, 'video')
+/** Back to no picture; the file stays in the project, so undo can bring it back. */
+const NO_IMAGE: Partial<Clip> = { imageAssetId: null }
+/** No voice, and the trim and position that belonged to it start over. */
+const NO_VOICE: Partial<Clip> = { audioAssetId: null, voiceInMs: 0, voiceOutMs: null, voiceStartMs: 0 }
+
+/** Stops what is still being made for a clip, or it would land right after the clip was cleared. */
+async function cancelFor(clipId: string, kind: JobKind): Promise<void> {
+  const running = activeJobFor({ clipId }, kind)
   if (running) await cancelJob(running.id)
-  patchClip(clipId, NO_VIDEO)
-  emit.clip({ clipId, patch: NO_VIDEO })
+}
+
+async function clear(clipId: string, kind: JobKind, patch: Partial<Clip>): Promise<void> {
+  await cancelFor(clipId, kind)
+  patchClip(clipId, patch)
+  emit.clip({ clipId, patch })
   touchProject(getClip(clipId).projectId)
 }
 
-/** Takes the video off every clip of a project, whether AI-made or imported. */
-export async function detachAllVideos(projectId: string): Promise<{ bundle: ProjectBundle; count: number }> {
-  const withVideo = clipsOf(projectId).filter((c) => c.videoAssetId || c.motionType === 'video' || activeJobFor({ clipId: c.id }, 'video'))
-  const count = withVideo.filter((c) => c.videoAssetId).length
-  for (const c of withVideo) await detachVideo(c.id)
-  return { bundle: getBundle(projectId), count }
+/** Takes the video off one clip. */
+export const detachVideo = (clipId: string): Promise<void> => clear(clipId, 'video', NO_VIDEO)
+
+/** Takes the picture off one clip. */
+export async function detachImage(clipId: string): Promise<void> {
+  await clear(clipId, 'image', NO_IMAGE)
+  syncCover(getClip(clipId).projectId)
 }
 
-/** Deletes the files of videos no clip uses any more, to free disk space. Undo can no longer bring them back. */
-export function purgeUnusedVideos(projectId: string): { bundle: ProjectBundle; count: number; bytes: number } {
+/** Takes the voice off a clip (the audio stays in the clip's history and can be picked again). */
+export const detachVoice = (clipId: string): Promise<void> => clear(clipId, 'tts', NO_VOICE)
+
+type Removal = { bundle: ProjectBundle; count: number }
+
+/** Takes the video off every clip of a project, whether AI-made or imported. */
+export async function detachAllVideos(projectId: string): Promise<Removal> {
+  const todo = clipsOf(projectId).filter((c) => c.videoAssetId || c.motionType === 'video' || activeJobFor({ clipId: c.id }, 'video'))
+  for (const c of todo) await detachVideo(c.id)
+  return { bundle: getBundle(projectId), count: todo.filter((c) => c.videoAssetId).length }
+}
+
+/** Takes the picture off every clip. Character sheets stay: they belong to the cast, not to a scene. */
+export async function detachAllImages(projectId: string): Promise<Removal> {
+  const todo = clipsOf(projectId).filter((c) => c.imageAssetId || activeJobFor({ clipId: c.id }, 'image'))
+  for (const c of todo) await clear(c.id, 'image', NO_IMAGE)
+  syncCover(projectId)
+  return { bundle: getBundle(projectId), count: todo.filter((c) => c.imageAssetId).length }
+}
+
+/** Takes the narration voice off every clip, and stops a take that is still being recorded. */
+export async function detachAllVoices(projectId: string): Promise<Removal> {
+  const take = activeProjectJob(projectId, 'narration')
+  if (take) await cancelJob(take.id)
+  const todo = clipsOf(projectId).filter((c) => c.audioAssetId || activeJobFor({ clipId: c.id }, 'tts'))
+  for (const c of todo) await detachVoice(c.id)
+  return { bundle: getBundle(projectId), count: todo.filter((c) => c.audioAssetId).length }
+}
+
+/** The cover is the first picture of the video: it follows when that picture goes away or comes back. */
+function syncCover(projectId: string): void {
+  touchProject(projectId, { coverAssetId: clipsOf(projectId).find((c) => c.imageAssetId)?.imageAssetId ?? null })
+}
+
+/**
+ * Deletes the files of pictures, voices and videos nothing uses any more, to free disk space. Undo can no longer
+ * bring them back. Music, logos and character sheets are never touched.
+ */
+export function purgeUnusedMedia(projectId: string): { bundle: ProjectBundle; count: number; bytes: number } {
   const bundle = getBundle(projectId)
-  const used = new Set(bundle.clips.map((c) => c.videoAssetId).filter(Boolean))
-  const loose = bundle.assets.filter((a) => a.kind === 'video' && !used.has(a.id))
+  const loose = looseAssets(getProject(projectId), bundle.clips, bundle.characters, bundle.assets)
   let bytes = 0
   for (const a of loose) {
     const abs = assetAbsPath(projectId, a.localPath)
@@ -197,12 +246,5 @@ export function restoreLinks(projectId: string, links: LinkRestore): void {
       // The character no longer exists.
     }
   }
-  touchProject(projectId)
-}
-
-/** Takes the voice off a clip (the audio stays in the clip's history and can be picked again). */
-export function detachVoice(clipId: string): void {
-  const patch: Partial<Clip> = { audioAssetId: null, voiceInMs: 0, voiceOutMs: null, voiceStartMs: 0 }
-  patchClip(clipId, patch)
-  emit.clip({ clipId, patch })
+  syncCover(projectId)
 }

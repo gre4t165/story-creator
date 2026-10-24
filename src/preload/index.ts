@@ -46,12 +46,15 @@ const api: StudioApi = {
     split: call('clips:split'),
     detachVoice: call('clips:detachVoice'),
     detachVideo: call('clips:detachVideo'),
-    detachAllVideos: call('clips:detachAllVideos')
+    detachImage: call('clips:detachImage'),
+    detachAllVideos: call('clips:detachAllVideos'),
+    detachAllImages: call('clips:detachAllImages'),
+    detachAllVoices: call('clips:detachAllVoices')
   },
   assets: {
     setActive: call('assets:setActive'),
     setWords: call('assets:setWords'),
-    purgeVideos: call('assets:purgeVideos'),
+    purgeUnused: call('assets:purgeUnused'),
     pickMusic: call('assets:pickMusic'),
     pickImage: call('assets:pickImage'),
     musicBeats: call('assets:musicBeats')

@@ -109,13 +109,11 @@ sebelum IPC yang membaca klip dari database (generate, split, ekspor), supaya ma
 ## Keamanan
 
 - **CSP** di `src/renderer/index.html`: skrip hanya dari aplikasi sendiri; gambar/media dari `studio:`, `blob:`,
-  `https:`; iframe hanya `https://www.youtube.com` (video tutorial di halaman About).
+  `https:`; tidak ada iframe (`frame-src 'none'`), jadi tidak ada konten web yang disematkan di aplikasi.
 - **Navigasi** jendela utama ke luar aplikasi diblok (`will-navigate`); `window.open` dibuka di browser bawaan
   hanya untuk URL https (`setWindowOpenHandler` → `shell.openExternal`).
 - **Kunci API** dienkripsi dengan Electron `safeStorage` (DPAPI di Windows, terikat akun pengguna) di tabel
   `secrets`. Lihat [layanan-ai.md](layanan-ai.md#kunci-api-byok).
-- **YouTube embed**: permintaan ke `https://www.youtube.com/embed/*` diberi header Referer berisi ID aplikasi
-  (`identifyToYouTube` di `index.ts`); tanpa itu YouTube menolak dengan Error 153.
 
 ## Switch Chromium
 
