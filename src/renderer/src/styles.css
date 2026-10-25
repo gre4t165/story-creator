@@ -23,14 +23,125 @@
   --color-bad-soft: #fbe3e1;
   --color-bad-ink: #8a1f14;
   --color-draft: #efeae2;
+  /* Surfaces of the editor: the stage behind the preview, empty progress tracks, waveforms, offset shadows. */
+  --color-stage: #efeae2;
+  --color-track: #efe9df;
+  --color-wave: #8c7f6c;
+  --color-shadow: #1f1d1a;
+  /* Outlines of tinted timeline items, and the tints of the overlay and SFX tracks. */
+  --color-ok-line: #9cc596;
+  --color-info-line: #a9c3e3;
+  --color-sun-line: #e3c46a;
+  --color-violet-soft: #efeafa;
+  --color-violet-line: #cfc3ea;
+  --color-violet-ink: #4a3b78;
+  --color-teal-soft: #e3f2f0;
+  --color-teal-line: #9dc7c3;
+  --color-teal-ink: #1f5e58;
+  --color-amber-soft: #fbebdd;
+  --color-amber-line: #e0b48f;
+  --color-amber-ink: #7a3f12;
 
   --font-display: 'Bricolage Grotesque Variable', 'Segoe UI', sans-serif;
   --font-sans: 'Plus Jakarta Sans Variable', 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono Variable', Consolas, monospace;
 
-  --shadow-ink: 2px 2px 0 #1f1d1a;
-  --shadow-ink-md: 3px 3px 0 #1f1d1a;
-  --shadow-ink-lg: 4px 4px 0 #1f1d1a;
+  --shadow-ink: 2px 2px 0 var(--color-shadow);
+  --shadow-ink-md: 3px 3px 0 var(--color-shadow);
+  --shadow-ink-lg: 4px 4px 0 var(--color-shadow);
+}
+
+/*
+ * Accent colors (Pengaturan › Umum › Tampilan). "bata" is the @theme default above. accent-dark is used for
+ * text and links, so in the dark theme it is the lighter shade.
+ */
+:root[data-accent='biru'] {
+  --color-accent: #2563eb;
+  --color-accent-dark: #1d4ed8;
+  --color-accent-soft: #eff5ff;
+}
+:root[data-accent='hijau'] {
+  --color-accent: #15803d;
+  --color-accent-dark: #166534;
+  --color-accent-soft: #effbf2;
+}
+:root[data-accent='ungu'] {
+  --color-accent: #7c3aed;
+  --color-accent-dark: #6d28d9;
+  --color-accent-soft: #f5f0ff;
+}
+:root[data-accent='magenta'] {
+  --color-accent: #db2777;
+  --color-accent-dark: #be185d;
+  --color-accent-soft: #fff0f6;
+}
+
+/*
+ * Dark theme: the same warm paper look at night. It follows prefers-color-scheme, which the main process sets
+ * from the user's choice (nativeTheme.themeSource), so "Ikuti Windows" needs no code here.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-paper: #171513;
+    --color-surface: #201d1a;
+    --color-sand: #2a2622;
+    --color-ink: #efe9df;
+    --color-ink-2: #c4bcae;
+    --color-muted: #978f83;
+    --color-line: #34302a;
+    --color-line-2: #47413a;
+    --color-line-3: #5d554b;
+    --color-accent: #e0532c;
+    --color-accent-dark: #ff9a78;
+    --color-accent-soft: #3a1f17;
+    --color-sun: #ffc93c;
+    --color-sun-soft: #3b3117;
+    --color-sun-ink: #ffd76a;
+    --color-ok-soft: #1d3220;
+    --color-ok-ink: #9fd6a3;
+    --color-info-soft: #1b293b;
+    --color-info-ink: #9fc4f0;
+    --color-bad-soft: #3d1f1b;
+    --color-bad-ink: #f5a59a;
+    --color-draft: #2a2622;
+    --color-stage: #121110;
+    --color-track: #2f2a25;
+    --color-wave: #a89b85;
+    --color-shadow: #000000;
+    --color-ok-line: #3f6b44;
+    --color-info-line: #3e5d80;
+    --color-sun-line: #7a6427;
+    --color-violet-soft: #29233d;
+    --color-violet-line: #4e4377;
+    --color-violet-ink: #c9bdf0;
+    --color-teal-soft: #17302d;
+    --color-teal-line: #2f625c;
+    --color-teal-ink: #9fdcd3;
+    --color-amber-soft: #36261a;
+    --color-amber-line: #7a5232;
+    --color-amber-ink: #f3c39a;
+  }
+  :root[data-accent='biru'] {
+    --color-accent: #3b82f6;
+    --color-accent-dark: #93bbff;
+    --color-accent-soft: #172741;
+  }
+  :root[data-accent='hijau'] {
+    --color-accent: #22a352;
+    --color-accent-dark: #86e0a5;
+    --color-accent-soft: #14301f;
+  }
+  :root[data-accent='ungu'] {
+    --color-accent: #8b5cf6;
+    --color-accent-dark: #c4b0ff;
+    --color-accent-soft: #261d40;
+  }
+  :root[data-accent='magenta'] {
+    --color-accent: #ec4899;
+    --color-accent-dark: #f9a8d4;
+    --color-accent-soft: #3a1729;
+  }
 }
 
 @font-face {

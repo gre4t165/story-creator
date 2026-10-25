@@ -301,9 +301,9 @@ export function Player({
   }
 
   return (
-    <section ref={stage} className="flex min-h-0 flex-col items-center justify-center gap-3 bg-[#EFEAE2] p-5">
+    <section ref={stage} className="flex min-h-0 flex-col items-center justify-center gap-3 bg-stage p-5">
       <div
-        className="relative overflow-hidden rounded-xl border-[1.5px] border-ink bg-ink"
+        className="relative overflow-hidden rounded-xl border-[1.5px] border-ink bg-black"
         style={{ width: box.w, height: box.h }}
         onClick={audition ? stopAudition : toggle}
       >
@@ -368,7 +368,7 @@ export function Player({
           {timecode(t)} <span className="text-muted">/ {timecode(total)}</span>
         </span>
         <span className="flex-1" />
-        <span className="text-xs text-ink-2">Spasi untuk putar atau jeda</span>
+        <span className="hidden whitespace-nowrap text-xs text-ink-2 xl:inline">Spasi untuk putar atau jeda</span>
       </div>
     </section>
   )

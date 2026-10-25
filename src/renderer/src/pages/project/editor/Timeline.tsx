@@ -564,7 +564,7 @@ export function Timeline({
                   title={`${text} (klik untuk edit teks)`}
                   aria-pressed={selected}
                   className={cx(
-                    'absolute top-0 flex h-[30px] cursor-pointer select-none items-center overflow-hidden whitespace-nowrap rounded-md border border-[#E3C46A] bg-sun-soft px-1.5 text-xs text-sun-ink hover:border-sun-ink',
+                    'absolute top-0 flex h-[30px] cursor-pointer select-none items-center overflow-hidden whitespace-nowrap rounded-md border border-sun-line bg-sun-soft px-1.5 text-xs text-sun-ink hover:border-sun-ink',
                     selected && SELECTED
                   )}
                   style={{ left: start * pps + 1, width: Math.max(4, (end - start) * pps - 2) }}
@@ -593,7 +593,7 @@ export function Timeline({
                   aria-label={`Suara klip ${it.index + 1}`}
                   aria-pressed={is('voice', it.clip.id)}
                   className={cx(
-                    'absolute top-0 flex h-10 cursor-pointer select-none items-center overflow-hidden rounded-md border border-line-2 bg-[#EFEAE2] px-1 hover:border-ink-2',
+                    'absolute top-0 flex h-10 cursor-pointer select-none items-center overflow-hidden rounded-md border border-line-2 bg-stage px-1 hover:border-ink-2',
                     is('voice', it.clip.id) && SELECTED
                   )}
                   style={{ left: (it.start + span.startMs / 1000) * pps + 1, width: Math.max(4, (span.playMs / 1000) * pps - 2) }}
@@ -621,7 +621,7 @@ export function Timeline({
                 aria-pressed={is('music')}
                 aria-label="Musik latar"
                 className={cx(
-                  'absolute top-0 flex h-[30px] cursor-pointer select-none items-center gap-2 overflow-hidden whitespace-nowrap rounded-md border border-[#9CC596] bg-ok-soft px-2.5 text-xs text-ok-ink hover:border-ok-ink',
+                  'absolute top-0 flex h-[30px] cursor-pointer select-none items-center gap-2 overflow-hidden whitespace-nowrap rounded-md border border-ok-line bg-ok-soft px-2.5 text-xs text-ok-ink hover:border-ok-ink',
                   is('music') && SELECTED
                 )}
                 style={{ left: ms.startSec * pps + 1, width: Math.max(10, (ms.endSec - ms.startSec) * pps - 2) }}
@@ -649,7 +649,7 @@ export function Timeline({
                     title={label}
                     className={cx(
                       'absolute top-0 flex h-[30px] cursor-pointer select-none items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-md border px-2 text-xs font-medium',
-                      o.kind === 'image' ? 'border-[#A9C3E3] bg-info-soft text-info-ink' : 'border-[#CFC3EA] bg-[#EFEAFA] text-[#4A3B78]',
+                      o.kind === 'image' ? 'border-info-line bg-info-soft text-info-ink' : 'border-violet-line bg-violet-soft text-violet-ink',
                       is('overlay', o.id) && SELECTED
                     )}
                     style={{ left: start * pps + 1, width: Math.max(10, (end - start) * pps - 2) }}
@@ -680,7 +680,7 @@ export function Timeline({
                     title={`${sound?.label ?? s.sound}${s.auto ? ' (otomatis)' : ''}`}
                     className={cx(
                       'absolute top-0 flex h-[26px] cursor-pointer select-none items-center gap-1 overflow-hidden whitespace-nowrap rounded-md border px-1.5 text-[11px] font-medium',
-                      ambience ? 'border-[#9DC7C3] bg-[#E3F2F0] text-[#1F5E58]' : 'border-[#E0B48F] bg-[#FBEBDD] text-[#7A3F12]',
+                      ambience ? 'border-teal-line bg-teal-soft text-teal-ink' : 'border-amber-line bg-amber-soft text-amber-ink',
                       is('sfx', s.id) && SELECTED
                     )}
                     style={{ left: start * pps + 1, width: Math.max(6, (end - start) * pps - 2) }}

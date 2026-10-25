@@ -143,7 +143,9 @@ selama ekspor berjalan.
    Halaman About membaca versi dari `app.getVersion()`.
 2. Catat perubahan di `CHANGELOG.md`.
 3. `npm run typecheck` dan `npm run build`.
-4. `npm run dist` → `dist/StoryCreator-Setup-<versi>.exe`.
+4. `npm run dist` → `dist/StoryCreator-Setup-<versi>.exe`. Ikon installer dan exe diambil dari `build/icon.ico`;
+   kalau logo (`src/renderer/src/assets/logo.svg`) diubah, buat ulang ikonnya dulu dengan
+   `npx electron scripts/make-icon.cjs`.
 
 Yang ikut dipaketkan (lihat `electron-builder.yml`): `out/`, FFmpeg (di luar asar), `resources/fonts` → `fonts`, `resources/sfx` → `sfx`,
 `resources/whisper` → `whisper`, `resources/licenses` → `licenses`, dan lisensi FFmpeg →

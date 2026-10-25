@@ -791,7 +791,7 @@ function MusicTab() {
       <MusicPromptSection />
       <Section title="Musik latar">
         {music ? (
-          <div className="flex items-center gap-2.5 rounded-xl border border-[#9CC596] bg-ok-soft px-3 py-2.5 text-[13px] text-ok-ink">
+          <div className="flex items-center gap-2.5 rounded-xl border border-ok-line bg-ok-soft px-3 py-2.5 text-[13px] text-ok-ink">
             <Music className="size-4 shrink-0" />
             <span className="flex-1 truncate">{music.prompt}</span>
             <button type="button" aria-label="Lepas musik" onClick={() => updateEditor({ musicAssetId: null })} className="hover:text-ink">

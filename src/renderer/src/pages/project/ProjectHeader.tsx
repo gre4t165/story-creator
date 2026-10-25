@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { AlertCircle, ArrowLeft, Check, CheckCircle2, Loader2, Pencil, Redo2, Save, SlidersHorizontal, Undo2 } from 'lucide-react'
 import type { Step } from '@shared/types'
-import { Button, IconButton, Kbd, cx } from '../../components/ui'
+import { IconButton, cx } from '../../components/ui'
 import { relativeTime } from '../../lib/format'
 import { useApp } from '../../store/app'
 import { useProject } from '../../store/project'
@@ -62,7 +62,7 @@ export function ProjectHeader({ doneSteps, right }: { doneSteps: Step[]; right?:
   }
 
   return (
-    <header className="grid h-[68px] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 border-b border-line bg-surface px-6">
+    <header className="grid h-[68px] shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-4 border-b border-line bg-surface px-6">
       <div className="flex min-w-0 items-center gap-3">
         <IconButton
           label="Kembali ke beranda"
@@ -146,10 +146,9 @@ export function ProjectHeader({ doneSteps, right }: { doneSteps: Step[]; right?:
             <Redo2 className="size-[18px]" />
           </IconButton>
         </div>
-        <Button icon={<Save className="size-[17px]" />} onClick={() => void save()}>
-          Simpan
-          <Kbd>Ctrl S</Kbd>
-        </Button>
+        <IconButton label="Simpan (Ctrl+S)" onClick={() => void save()}>
+          <Save className="size-[18px]" />
+        </IconButton>
         <IconButton
           label="Pengaturan"
           onClick={async () => {

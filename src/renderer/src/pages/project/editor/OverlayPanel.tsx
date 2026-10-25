@@ -275,7 +275,7 @@ export function OverlayPanel({ total }: { total: number }) {
                   className={cx('flex items-center gap-2.5 rounded-xl border px-2 py-1.5', on ? 'border-accent bg-accent-soft' : 'border-line-2 hover:border-ink-2')}
                 >
                   <button type="button" onClick={() => pick(o)} aria-pressed={on} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-                    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-[repeating-conic-gradient(#EFEAE2_0_25%,#FFFFFF_0_50%)] bg-[length:10px_10px]">
+                    <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-[repeating-conic-gradient(var(--color-stage)_0_25%,var(--color-surface)_0_50%)] bg-[length:10px_10px]">
                       {asset ? <img src={asset.url} alt="" className="max-h-full max-w-full object-contain" /> : <Type className="size-4" />}
                     </span>
                     <span className="flex min-w-0 flex-col">

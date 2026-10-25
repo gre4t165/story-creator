@@ -32,6 +32,16 @@
 | `sun` (+ `-soft`, `-ink`) | `#ffc93c` | sorotan, pilihan aktif di daftar |
 | `ok-*`, `info-*`, `bad-*` | hijau, biru, merah | status |
 
+Token lain: `stage` (latar pratinjau), `track` (progress kosong), `wave` (waveform), `shadow` (bayangan tinta), dan
+garis/tint jalur timeline (`ok-line`, `info-line`, `sun-line`, `violet-*`, `teal-*`, `amber-*`).
+
+**Tema gelap dan aksen.** Setiap token punya nilai gelap di blok `@media (prefers-color-scheme: dark)` di
+`styles.css`; mode dipilih lewat `nativeTheme.themeSource` di proses main (`theme` di pengaturan). Aksen memakai
+`data-accent` di `<html>` (`lib/theme.ts`). Karena itu **jangan menulis warna hex di komponen** (`bg-[#...]`,
+`stroke="#..."`): tambahkan token dengan nilai terang dan gelap. Pengecualian: warna konten (swatch caption,
+logo merek) dan latar yang harus tetap hitam di kedua tema (`bg-black` untuk letterbox video dan peredup dialog;
+`ink` justru menjadi terang di tema gelap).
+
 Font UI: Plus Jakarta Sans (teks), Bricolage Grotesque (judul, `font-display`), JetBrains Mono (angka/waktu).
 Bayangan "tinta" (`shadow-ink`) memberi kesan kertas dan tinta. Font caption ada terpisah di `captions.ts`.
 

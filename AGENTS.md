@@ -44,12 +44,13 @@ src/
     services/      klien API: gemini, elevenlabs, edgetts, localtts (Voicebox), higgsfield, cloudflare, pollinations, llm (OpenAI-compatible), audio, http
     devharness.ts  otomatisasi uji (hanya mode pengembangan)
   preload/         jembatan aman: window.api (lihat src/shared/api.ts)
-  shared/          kode yang dipakai main DAN renderer (tipe, aturan gerak, caption, timeline)
+  shared/          kode yang dipakai main DAN renderer (tipe, aturan gerak, caption, timeline, tema, media tak terpakai)
   renderer/src/    tampilan React + Tailwind v4 + Zustand
     pages/project/  langkah Ide, Naskah, Storyboard, Editor
     pages/project/editor/  pratinjau (Player), Timeline, Inspector (panel kanan), engine pemutaran
 resources/         font caption, whisper-cli.exe + DLL, pustaka SFX CC0 (sfx/), file lisensi
-scripts/           sfx-catalog.cjs: bangun ulang src/shared/sfx-catalog.json
+scripts/           sfx-catalog.cjs: bangun ulang src/shared/sfx-catalog.json; make-icon.cjs: logo.svg → build/icon.ico
+build/             ikon installer/exe (icon.ico, icon.png), dibuat dari logo
 docs/              dokumentasi pengembang
 ```
 
@@ -72,7 +73,8 @@ docs/              dokumentasi pengembang
 6. **Teks antarmuka berbahasa Indonesia** (santai, pakai "kamu"); **komentar dan nama di kode berbahasa Inggris**.
    Komentar menjelaskan *kenapa*, bukan *apa*.
 7. **TypeScript strict** dengan `noUnusedLocals`/`noUnusedParameters`: hapus impor dan variabel yang tidak dipakai.
-8. Jangan memakai `<select>` bawaan browser; pakai komponen `Select`/`Popover`. Aturan UI lain ada di
+8. Jangan memakai `<select>` bawaan browser; pakai komponen `Select`/`Popover`. Warna hanya lewat token di
+   `styles.css` (ada nilai terang dan gelap), bukan hex di komponen. Aturan UI lain ada di
    [docs/konvensi.md](docs/konvensi.md).
 9. Jangan mengulang bug yang sudah diperbaiki. Baca [docs/keputusan-teknis.md](docs/keputusan-teknis.md) sebelum
    mengubah ekspor, narasi, Whisper, caption, atau pratinjau video.

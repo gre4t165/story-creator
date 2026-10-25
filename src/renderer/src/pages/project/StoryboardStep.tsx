@@ -844,37 +844,38 @@ export function StoryboardStep() {
 
       <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_540px]">
         <section className="scroll-thin flex min-h-0 flex-col gap-3.5 overflow-y-auto px-6 pb-6 pt-[18px]">
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-2xl font-bold">Storyboard</h1>
-            <span className="text-sm text-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h1 className="shrink-0 font-display text-2xl font-bold">Storyboard</h1>
+            <span className="whitespace-nowrap text-sm text-muted">
               {clips.length} klip · {mmss(stats.total)}
             </span>
-            <div className="flex-1" />
-            <Menu
-              width={260}
-              trigger={(open) => (
-                <Button variant="ghost" icon={<Eraser className="size-[17px]" />} onClick={open} title="Hapus semua gambar, suara, atau video, atau bersihkan filenya dari disk">
-                  Hapus media
-                </Button>
-              )}
-              items={[
-                { label: `Hapus semua gambar (${media.image.count})`, icon: <ImageOff className="size-4" />, danger: true, run: () => void removeAll('image') },
-                { label: `Hapus semua suara (${media.audio.count})`, icon: <VolumeX className="size-4" />, danger: true, run: () => void removeAll('audio') },
-                { label: `Hapus semua video (${media.video.count})`, icon: <VideoOff className="size-4" />, danger: true, run: () => void removeAll('video') },
-                { label: `Bersihkan file tak terpakai (${loose.length})`, icon: <Trash2 className="size-4" />, run: () => void purge() }
-              ]}
-            />
-            <Button
-              variant="ghost"
-              icon={<Shuffle className="size-[17px]" />}
-              title="Beri setiap gambar gerak kamera acak (zoom, geser, Ken Burns), klip bersebelahan tidak pernah sama"
-              onClick={() => toast('success', `Gerak ${shuffleMotions()} gambar diacak.`)}
-            >
-              Acak gerak
-            </Button>
-            <Button variant="ghost" icon={<Plus className="size-[17px]" />} onClick={() => addClip(sel?.id ?? null)}>
-              Tambah klip
-            </Button>
+            <div className="ml-auto flex shrink-0 items-center">
+              <Menu
+                width={260}
+                trigger={(open) => (
+                  <Button variant="ghost" icon={<Eraser className="size-[17px]" />} onClick={open} title="Hapus semua gambar, suara, atau video, atau bersihkan filenya dari disk">
+                    Hapus media
+                  </Button>
+                )}
+                items={[
+                  { label: `Hapus semua gambar (${media.image.count})`, icon: <ImageOff className="size-4" />, danger: true, run: () => void removeAll('image') },
+                  { label: `Hapus semua suara (${media.audio.count})`, icon: <VolumeX className="size-4" />, danger: true, run: () => void removeAll('audio') },
+                  { label: `Hapus semua video (${media.video.count})`, icon: <VideoOff className="size-4" />, danger: true, run: () => void removeAll('video') },
+                  { label: `Bersihkan file tak terpakai (${loose.length})`, icon: <Trash2 className="size-4" />, run: () => void purge() }
+                ]}
+              />
+              <Button
+                variant="ghost"
+                icon={<Shuffle className="size-[17px]" />}
+                title="Beri setiap gambar gerak kamera acak (zoom, geser, Ken Burns), klip bersebelahan tidak pernah sama"
+                onClick={() => toast('success', `Gerak ${shuffleMotions()} gambar diacak.`)}
+              >
+                Acak gerak
+              </Button>
+              <Button variant="ghost" icon={<Plus className="size-[17px]" />} onClick={() => addClip(sel?.id ?? null)}>
+                Tambah klip
+              </Button>
+            </div>
           </div>
           {stale > 0 && (
             <div className="flex items-center gap-3 rounded-2xl border border-sun bg-sun-soft px-4 py-3 text-sm text-sun-ink">

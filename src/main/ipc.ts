@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { copyFileSync, mkdirSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
-import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, shell } from 'electron'
 import type {
   ApiProvider,
   AppSettings,
@@ -17,6 +17,7 @@ import type {
   VoiceOption,
   WordTiming
 } from '@shared/types'
+import { PAPER } from '@shared/appearance'
 import { startExport } from './exporter'
 import {
   estimateCredits,
@@ -215,7 +216,14 @@ export function registerIpc(): void {
   })
 
   handle('settings:get', () => getSettings())
-  handle('settings:set', (patch: Partial<AppSettings>) => setSettings(patch))
+  handle('settings:set', (patch: Partial<AppSettings>) => {
+    const s = setSettings(patch)
+    if ('theme' in patch) {
+      nativeTheme.themeSource = s.theme
+      for (const w of BrowserWindow.getAllWindows()) w.setBackgroundColor(nativeTheme.shouldUseDarkColors ? PAPER.dark : PAPER.light)
+    }
+    return s
+  })
   handle('settings:keys', () => keyStatuses())
   handle('settings:setKey', async (provider: ApiProvider, key: string) => {
     const clean = key.trim()

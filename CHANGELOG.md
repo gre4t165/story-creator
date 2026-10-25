@@ -9,6 +9,12 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 ## [Belum dirilis]
 
 ### Ditambahkan
+- **Tema aplikasi** (Pengaturan › Umum › Tampilan): Terang, Gelap, atau Ikuti Windows (berganti sendiri bersama
+  Windows), plus 5 warna aksen (Bata, Biru, Hijau, Ungu, Magenta). Mode gelap memakai `nativeTheme`, jadi scrollbar
+  dan kontrol bawaan ikut gelap dan jendela tidak berkedip putih saat dibuka. Bawaannya Ikuti Windows.
+- **Logo baru**: buku terbuka (cerita) dengan tombol putar (video) dan percikan. Satu sumber
+  `src/renderer/src/assets/logo.svg` dipakai di aplikasi dan dijadikan ikon installer, exe, dan taskbar
+  (`build/icon.ico`) lewat `scripts/make-icon.cjs`. Sebelumnya aplikasi terpasang memakai ikon bawaan Electron.
 - **Hapus semua gambar, suara, dan video** (Storyboard › Hapus media). Tiap aksi melepas medianya dari semua klip,
   membatalkan yang masih dibuat supaya tidak muncul lagi, dan bisa diurungkan (Ctrl+Z atau tombol Urungkan di pesan).
   Lembar karakter, musik, dan SFX tidak berubah. Sampul proyek ikut hilang atau kembali bersama gambarnya.
@@ -16,6 +22,15 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 - **Bersihkan file tak terpakai** menggantikan "Bersihkan file video": menghapus dari disk gambar, suara, dan video
   yang tidak terpasang di mana pun (termasuk versi lama gambar yang dibuat ulang). Lembar karakter, musik, dan logo
   tidak disentuh. Aturan "tidak terpakai" ada di `shared/media.ts`, dipakai penghitung di layar dan penghapus di main.
+
+### Diperbaiki
+- Di langkah Editor, tombol Urungkan, Ulangi, dan Simpan tertimpa navigasi langkah saat jendela tidak lebar. Simpan
+  kini berupa ikon (status simpan tetap terlihat di bawah judul) dan sisi kanan header mengambil ruang yang ia perlukan.
+- Judul Storyboard tidak lagi terlipat per kata dan tombol "Tambah klip" tidak terpotong di jendela sempit.
+- Petunjuk "Spasi untuk putar atau jeda" di pratinjau tidak lagi terlipat per kata di jendela sempit.
+- Mengklik teks "Folder ekspor" di Pengaturan tidak lagi langsung membuka dialog pilih folder.
+- Warna yang tertanam langsung di komponen (timeline, waveform, panggung pratinjau, bayangan dialog) dipindah ke token,
+  sehingga ikut tema.
 
 ### Dihapus
 - **Video tutorial YouTube yang disematkan** di halaman Tentang aplikasi. Header Referer untuk YouTube dan izin

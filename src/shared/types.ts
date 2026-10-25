@@ -1,3 +1,4 @@
+import type { AccentId, ThemeMode } from './appearance'
 import type { ContentRules } from './content'
 export type ProjectStatus = 'draft' | 'script' | 'storyboard' | 'editing' | 'exported'
 export type AspectRatio = '16:9' | '9:16'
@@ -320,6 +321,10 @@ export interface AppSettings {
   whisperAuto: boolean
   /** Faces hidden and censored, modest clothing for women: applied to every picture and video. */
   contentRules: ContentRules
+  /** Light, dark, or the same as Windows. */
+  theme: ThemeMode
+  /** Color of buttons, links and highlights. */
+  accent: AccentId
 }
 
 /** What one Higgsfield request would cost, from the API's estimate endpoint. */

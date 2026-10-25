@@ -16,6 +16,7 @@ import {
   SlidersHorizontal,
   Trash2
 } from 'lucide-react'
+import { ACCENTS, THEME_MODES } from '@shared/appearance'
 import { FREE_IMAGE_MODELS } from '@shared/freemodels'
 import { HF_IMAGE_MODELS, HF_VIDEO_MODELS } from '@shared/higgsfield'
 import { LANGUAGES, LLM_PROVIDERS } from '@shared/models'
@@ -27,9 +28,10 @@ import { Select } from '../components/Select'
 import { AboutSection } from './AboutSection'
 import { ContentSection } from './ContentSection'
 import { WhisperSection } from './WhisperSection'
-import { Badge, Button, Field, IconButton, confirmDialog, cx, inputCls } from '../components/ui'
+import { Badge, Button, Field, IconButton, Segmented, confirmDialog, cx, inputCls } from '../components/ui'
 import { errorText, relativeTime } from '../lib/format'
 import { ELEVENLABS_URL, HIGGSFIELD_URL } from '../lib/links'
+import { applyAccent } from '../lib/theme'
 import { useModels } from '../lib/useModels'
 import { useApp } from '../store/app'
 
@@ -843,8 +845,51 @@ export function Settings() {
               <>
                 <div>
                   <h1 className="font-display text-[34px] font-bold tracking-[-0.015em]">Umum</h1>
-                  <p className="mt-2 text-[15px] text-ink-2">Pilihan bawaan untuk proyek baru.</p>
+                  <p className="mt-2 text-[15px] text-ink-2">Tampilan aplikasi dan pilihan bawaan untuk proyek baru.</p>
                 </div>
+                <section className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6">
+                  {/* Not a <Field>: that is a <label>, and a click on its hint would press the first theme button. */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-ink">Tema</span>
+                    <Segmented
+                      value={settings.theme}
+                      onChange={async (v) => setSettings(await window.api.settings.set({ theme: v }))}
+                      options={THEME_MODES.map((m) => ({ id: m.id, label: m.label }))}
+                      className="max-w-[420px]"
+                    />
+                    <span className="text-[13px] text-muted">Ikuti Windows berganti sendiri saat Windows pindah ke mode gelap atau terang.</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-ink">Warna aksen</span>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Warna aksen">
+                      {ACCENTS.map((c) => {
+                        const on = settings.accent === c.id
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={on}
+                            onClick={async () => {
+                              applyAccent(c.id)
+                              setSettings(await window.api.settings.set({ accent: c.id }))
+                            }}
+                            className={cx(
+                              'inline-flex h-10 items-center gap-2 rounded-full border py-0 pl-1.5 pr-3.5 text-[13px] font-medium transition-colors',
+                              on ? 'border-ink bg-sand text-ink' : 'border-line-2 bg-surface text-ink-2 hover:border-ink-2'
+                            )}
+                          >
+                            <span className="flex size-7 items-center justify-center rounded-full border border-black/20" style={{ background: c.swatch }}>
+                              {on && <Check className="size-4 text-white" strokeWidth={3} />}
+                            </span>
+                            {c.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <span className="text-[13px] text-muted">Dipakai untuk tombol utama, tautan, dan sorotan. Logo tetap berwarna aslinya.</span>
+                  </div>
+                </section>
                 <section className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6">
                   <Field label="Bahasa default naskah dan suara">
                     <Select
@@ -855,7 +900,9 @@ export function Settings() {
                       className="max-w-[320px]"
                     />
                   </Field>
-                  <Field label="Folder ekspor">
+                  {/* A <div>, not a <Field> label: a click on the path would otherwise press Ganti folder. */}
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-sm font-semibold text-ink">Folder ekspor</span>
                     <div className="flex gap-2">
                       <div className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-line bg-sand px-3.5 font-mono text-[13px]">
                         <FolderOpen className="size-[17px] shrink-0 text-ink-2" />
@@ -871,7 +918,7 @@ export function Settings() {
                         Ganti folder
                       </Button>
                     </div>
-                  </Field>
+                  </div>
                 </section>
               </>
             )}

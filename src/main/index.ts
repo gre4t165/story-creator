@@ -1,12 +1,14 @@
 import { existsSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme, shell } from 'electron'
+import { PAPER } from '@shared/appearance'
 import { closeDb, getDb } from './db'
 import { attachDevHarness, prepareHarness } from './devharness'
 import { resumeJobs } from './generation'
 import { registerIpc } from './ipc'
 import { handleStudioProtocol, registerSchemes } from './protocol'
 import { warmUpEncryption } from './secrets'
+import { getSettings } from './settings'
 
 /**
  * The app used to be called "Bang Story", and before that "Studio Cerita". Its data folder (projects,
@@ -39,13 +41,18 @@ app.commandLine.appendSwitch('disable-direct-composition-video-overlays')
 registerSchemes()
 
 function createWindow(): void {
+  // The page reads light or dark from prefers-color-scheme, which follows nativeTheme; the window background is set
+  // to match, so a dark app does not flash white while it loads.
+  nativeTheme.themeSource = getSettings().theme
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1180,
     minHeight: 720,
     show: false,
-    backgroundColor: '#FAF7F2',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? PAPER.dark : PAPER.light,
+    // Installed builds take the icon from the exe; in development the window gets it here.
+    ...(app.isPackaged ? {} : { icon: join(app.getAppPath(), 'build', 'icon.png') }),
     autoHideMenuBar: true,
     title: 'Story Creator',
     webPreferences: {

@@ -1,3 +1,4 @@
+import { isAccent, isThemeMode } from '@shared/appearance'
 import { DEFAULT_CONTENT_RULES, normalizeRules } from '@shared/content'
 import { resolveImageModelId } from '@shared/freemodels'
 import { DEFAULT_IMAGE_MODEL, DEFAULT_VIDEO_MODEL, getVideoModel } from '@shared/higgsfield'
@@ -17,7 +18,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   imageModel: DEFAULT_IMAGE_MODEL,
   videoModel: DEFAULT_VIDEO_MODEL,
   whisperAuto: true,
-  contentRules: DEFAULT_CONTENT_RULES
+  contentRules: DEFAULT_CONTENT_RULES,
+  theme: 'system',
+  accent: 'bata'
 }
 
 export function getSettings(): AppSettings {
@@ -35,6 +38,8 @@ export function getSettings(): AppSettings {
   // Models dropped from the catalogs fall back to the defaults. Free image models are valid here too.
   out.imageModel = resolveImageModelId(out.imageModel)
   out.videoModel = getVideoModel(out.videoModel).id
+  if (!isThemeMode(out.theme)) out.theme = 'system'
+  if (!isAccent(out.accent)) out.accent = 'bata'
   return out
 }
 

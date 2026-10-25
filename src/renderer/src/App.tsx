@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { ConfirmHost } from './components/ui'
 import { Toasts } from './components/Toasts'
+import { applyAccent } from './lib/theme'
 import { Home } from './pages/Home'
 import { ProjectPage } from './pages/project/ProjectPage'
 import { Settings } from './pages/Settings'
@@ -17,6 +18,10 @@ const KIND_LABEL: Record<string, string> = {
 
 export function App() {
   const route = useApp((s) => s.route)
+
+  useEffect(() => {
+    void window.api.settings.get().then((s) => applyAccent(s.accent))
+  }, [])
 
   useEffect(() => {
     const p = useProject.getState

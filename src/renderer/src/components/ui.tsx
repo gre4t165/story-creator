@@ -187,7 +187,7 @@ export function Field({ label, hint, children, className }: { label: ReactNode; 
 
 export function Progress({ value, className }: { value: number; className?: string }) {
   return (
-    <span className={cx('block h-2 overflow-hidden rounded-full bg-[#EFE9DF]', className)}>
+    <span className={cx('block h-2 overflow-hidden rounded-full bg-track', className)}>
       <span className="block h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${Math.round(value * 100)}%` }} />
     </span>
   )
@@ -228,11 +228,11 @@ export function Modal({
   }, [open, onClose])
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         role="dialog"
         aria-modal="true"
-        className="scroll-thin flex max-h-full flex-col gap-5 overflow-y-auto rounded-[20px] border-[1.5px] border-ink bg-surface p-7 shadow-[6px_6px_0_#1f1d1a]"
+        className="scroll-thin flex max-h-full flex-col gap-5 overflow-y-auto rounded-[20px] border-[1.5px] border-ink bg-surface p-7 shadow-[6px_6px_0_var(--color-shadow)]"
         style={{ width }}
       >
         <div className="flex items-start gap-3">
