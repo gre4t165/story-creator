@@ -1,7 +1,7 @@
 {
   "name": "story-creator",
   "productName": "Story Creator",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Ubah ide cerita jadi video YouTube: klip, naskah, suara, dan timeline dalam satu aplikasi desktop.",
   "main": "./out/main/index.js",
   "author": "Bang Story",

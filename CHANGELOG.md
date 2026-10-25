@@ -8,6 +8,8 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+## [1.3.0] - 2026-10-25
+
 ### Ditambahkan
 - **Tema aplikasi** (Pengaturan › Umum › Tampilan): Terang, Gelap, atau Ikuti Windows (berganti sendiri bersama
   Windows), plus 5 warna aksen (Bata, Biru, Hijau, Ungu, Magenta). Mode gelap memakai `nativeTheme`, jadi scrollbar
