@@ -147,6 +147,9 @@ selama ekspor berjalan.
    kalau logo (`src/renderer/src/assets/logo.svg`) diubah, buat ulang ikonnya dulu dengan
    `npx electron scripts/make-icon.cjs`.
 
+Installer juga dibuild otomatis oleh GitHub Actions (`.github/workflows/build-installer.yml`): jalankan manual lewat
+tab Actions, atau push tag `v*` (mis. `v1.3.0`) untuk sekaligus melampirkannya ke GitHub Release.
+
 Yang ikut dipaketkan (lihat `electron-builder.yml`): `out/`, FFmpeg (di luar asar), `resources/fonts` → `fonts`, `resources/sfx` → `sfx`,
 `resources/whisper` → `whisper`, `resources/licenses` → `licenses`, dan lisensi FFmpeg →
 `licenses/FFmpeg-LICENSE.txt`.
