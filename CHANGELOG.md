@@ -8,6 +8,8 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+## [1.4.0] - 2026-11-02
+
 ### Ditambahkan
 - **Versi gratis dan Pro dengan kode aktivasi.** Gratis: ekspor sampai 720p 30 fps dengan watermark "Dibuat dengan Story
   Creator", maksimal 3 proyek, tanpa SFX otomatis, tanpa Musik + atur gambar, dan tanpa impor sekaligus/JSON. Pro
