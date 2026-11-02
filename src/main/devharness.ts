@@ -10,7 +10,8 @@ import { assetAbsPath, binPath } from './paths'
 import { probeDurationMs } from './services/audio'
 import { createProject, getBundle, insertAsset, patchClip, replaceStory, saveSnapshot, touchProject } from './repo'
 import { recordCheck, setSecret } from './secrets'
-import type { ApiProvider } from '@shared/types'
+import { newRelaxSettings } from '@shared/relax'
+import type { ApiProvider, RelaxSettings } from '@shared/types'
 
 /**
  * Real speech for the demo clips (Windows' built-in English voice) with estimated caption timings, so
@@ -195,7 +196,11 @@ export function attachDevHarness(win: BrowserWindow): void {
   const planPath = process.env.STUDIO_CAPTURE_PLAN
   if (!planPath) return
   let plan: {
-    main?: 'seed' | 'export' | 'key' | 'overlays' | 'speech' | 'videos'
+    main?: 'seed' | 'export' | 'key' | 'overlays' | 'speech' | 'videos' | 'relax'
+    /** For main "relax": settings on top of a new sleep video (e.g. a short lengthSec to test the loop quickly). */
+    relax?: Partial<RelaxSettings>
+    /** For main "export": the resolution, 1080 by default. */
+    resolution?: 720 | 1080 | 2160
     exportTo?: string
     /** For main "export": an existing project instead of the seeded demo. */
     projectId?: string
@@ -229,6 +234,11 @@ export function attachDevHarness(win: BrowserWindow): void {
         if (step.main === 'overlays' && demoId) addDemoOverlays(demoId)
         if (step.main === 'videos' && demoId) addDemoVideos(demoId)
         if (step.main === 'speech' && demoId) await addDemoSpeech(demoId)
+        if (step.main === 'relax' && demoId) {
+          const b = getBundle(demoId)
+          const relax = { ...newRelaxSettings(step.relax?.kind ?? 'sleep'), ...step.relax }
+          saveSnapshot({ project: { ...b.project, editor: { ...b.project.editor, relax, captionStyle: 'none' } }, characters: b.characters, clips: b.clips })
+        }
         if (step.main === 'key' && step.provider) {
           setSecret(step.provider, 'dev-harness-fake-key')
           recordCheck(step.provider, step.ok !== false, step.ok === false ? 'Kunci ditolak (uji)' : 'Terhubung (uji)')
@@ -236,7 +246,7 @@ export function attachDevHarness(win: BrowserWindow): void {
         if (step.main === 'export' && (step.projectId ?? demoId)) {
           startExport((step.projectId ?? demoId)!, {
             fileName: 'demo-export',
-            resolution: 1080,
+            resolution: step.resolution ?? 1080,
             fps: 30,
             burnCaptions: true,
             writeSrt: true,

@@ -157,6 +157,25 @@ memakai waktu kata perkiraan, lalu disinkronkan Whisper kalau modelnya ada.
   tambahan manual tetap. Menambah suara: taruh file `.ogg` (CC0) di `resources/sfx/<paket>/`, jalankan `node scripts/sfx-catalog.cjs`,
   lalu beri label dan kata kunci di `META`.
 
+## Video tidur, meditasi, dan ambience (`src/shared/relax.ts`)
+
+- `editor.relax` (`RelaxSettings`, tanpa migrasi): jenis (`sleep`/`meditation`/`ambience`), panjang akhir, gaya suara,
+  lapisan suasana, volume semua lapisan, fade akhir, dan layar gelap. Diatur di langkah Ide (jenis, panjang, gaya suara)
+  dan di tab **Suasana** editor (`RelaxPanel.tsx`), lewat `updateEditor` sehingga bisa diurungkan.
+- **Naskah** (`RELAX_WRITERS` di `story.ts`): prompt sistem dan panjang narasi per jenis; ambience tanpa narasi dan tiap
+  adegan `AMBIENCE_SCENE_SEC`. Jumlah adegan dari `relaxClipCount`. Rencana visual mendapat aturan suasana tenang, lalu
+  `calmVisual` memaksa kamera halus (tanpa shake), transisi fade, dan `transitionMs` 2500.
+- **Narator**: `deliveryOf(project)` (`narration.ts`) memberi gaya dari `relaxDelivery`: gaya Gemini, `speed` dan tag
+  (`[whispers]`/`[softly]`, hanya model v3) ElevenLabs, `rate` Edge. Voicebox tidak diubah. Setiap klip menahan
+  `relaxHoldMs` hening setelah suaranya (1,8 dtk tidur, 5 dtk meditasi).
+- **Lapisan suasana**: file pustaka (`resources/sfx/ambience`, ikut `sfx-catalog.json`, urutan di `AMBIENCE_ORDER`) atau
+  aset jenis `ambience` (impor lewat `relax:pickAmbience`, atau ElevenLabs `relax:generateAmbience` →
+  `/v1/sound-generation` dengan `loop: true`). Aset `ambience` tidak termasuk `MediaKind`, jadi tidak pernah dihapus oleh
+  "hapus media tak terpakai".
+- **Pustaka**: `scripts/ambience-pack.cjs` memotong rekaman Freesound CC0 jadi loop maksimal 5 menit (akhir di-crossfade ke
+  awal), menyamakan kenyaringan ke −26 LUFS (dua pass `loudnorm` linear), dan menulis kreditnya ke
+  `resources/licenses/Freesound-ambience-CC0.txt`. Daftar sumber ada di `SOURCES` skrip itu.
+
 ## 6. Prompt musik (`generateMusicPrompt`)
 
 LLM membuat `{ title, style, exclude, description, reason }` untuk dipakai di Suno, Udio, atau ElevenLabs Music.

@@ -14,6 +14,7 @@ import {
   KeyRound,
   Mic,
   SlidersHorizontal,
+  Sparkles,
   Trash2
 } from 'lucide-react'
 import { ACCENTS, THEME_MODES } from '@shared/appearance'
@@ -27,15 +28,16 @@ import { ProviderLogo, type ProviderLogoId } from '../components/ProviderLogo'
 import { Select } from '../components/Select'
 import { AboutSection } from './AboutSection'
 import { ContentSection } from './ContentSection'
+import { LicenseSection } from './LicenseSection'
 import { WhisperSection } from './WhisperSection'
 import { Badge, Button, Field, IconButton, Segmented, confirmDialog, cx, inputCls } from '../components/ui'
 import { errorText, relativeTime } from '../lib/format'
 import { ELEVENLABS_URL, HIGGSFIELD_URL } from '../lib/links'
 import { applyAccent } from '../lib/theme'
 import { useModels } from '../lib/useModels'
-import { useApp } from '../store/app'
+import { useApp, type SettingsTab } from '../store/app'
 
-type Tab = 'services' | 'content' | 'general' | 'about'
+type Tab = SettingsTab
 
 interface ProviderOption<T extends string> {
   id: T
@@ -758,7 +760,7 @@ function FreeImageSection({ statusOf, onChanged }: { statusOf: (p: ApiProvider) 
 export function Settings() {
   const { go, route } = useApp()
   const back = route.name === 'settings' && route.back ? route.back : ({ name: 'home' } as const)
-  const [tab, setTab] = useState<Tab>('services')
+  const [tab, setTab] = useState<Tab>(route.name === 'settings' && route.tab ? route.tab : 'services')
   const [keys, setKeys] = useState<KeyStatus[]>([])
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [folder, setFolder] = useState('')
@@ -778,6 +780,7 @@ export function Settings() {
     { id: 'services', label: 'Layanan AI dan kunci', icon: <KeyRound className="size-[18px]" /> },
     { id: 'content', label: 'Aturan gambar & video', icon: <EyeOff className="size-[18px]" /> },
     { id: 'general', label: 'Umum', icon: <SlidersHorizontal className="size-[18px]" /> },
+    { id: 'license', label: 'Lisensi', icon: <Sparkles className="size-[18px]" /> },
     { id: 'about', label: 'Tentang aplikasi', icon: <Info className="size-[18px]" /> }
   ]
 
@@ -922,6 +925,8 @@ export function Settings() {
                 </section>
               </>
             )}
+
+            {tab === 'license' && <LicenseSection />}
 
             {tab === 'about' && <AboutSection />}
           </div>

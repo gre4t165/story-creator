@@ -82,6 +82,17 @@ dan audio dimatikan lewat parameter kalau modelnya punya. Audio dari file video 
 Kunci kriptografi `safeStorage` baru tertulis ke `Local State` sekitar 10 detik setelah dibuat. Membuatnya saat
 startup (`warmUpEncryption`) mencegah kunci API tidak terbaca setelah aplikasi ditutup paksa.
 
+### Video relaksasi panjang diulang dengan stream copy
+Merender 10 jam gambar akan makan berjam-jam dan puluhan GB. Gambar cerita dirender sekali, adegan terakhir di-fade ke
+salinan adegan pertama, lalu potongan MPEG-TS dengan pengaturan encoder identik disambung lewat concat demuxer tanpa encode
+ulang. MPEG-TS dipilih karena SPS/PPS ada di setiap potongan, jadi sambungan aman. Audio tetap dibuat utuh sepanjang
+video, dengan `alimiter` dan bukan `loudnorm`, karena `loudnorm` (192 kHz internal) terlalu lambat untuk berjam-jam audio.
+Caption tidak ditempel di video relaksasi karena akan muncul lagi di setiap pengulangan.
+
+### Loop suara memakai dua input, bukan `asplit`
+`asplit` yang cabangnya masuk ke `acrossfade` macet dan tidak menghasilkan sampel apa pun (FFmpeg 6). Di
+`scripts/ambience-pack.cjs` sumber yang sama dibuka dua kali (`[0:a]` badan, `[1:a]` awal) lalu di-`acrossfade`.
+
 ### Tidak ada video YouTube yang disematkan
 Video tutorial di halaman Tentang sudah dihapus, begitu juga header Referer untuk YouTube dan izin `frame-src` di CSP.
 Kalau embed YouTube ditambahkan lagi: halaman dari `file://` tidak mengirim Referer dan YouTube menolak embed tanpa

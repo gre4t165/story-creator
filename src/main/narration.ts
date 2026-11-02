@@ -6,6 +6,7 @@ import ffmpegStatic from 'ffmpeg-static'
 import { WHISPER_TIMING, captionNeedsSync, estimateWordTimings } from '@shared/captions'
 import { estimateNarrationMs } from '@shared/script'
 import { defaultVoiceFor } from '@shared/models'
+import { relaxDelivery, relaxHoldMs } from '@shared/relax'
 import { spokenWords, stripVoiceTags } from '@shared/speech'
 import type { Clip, Job, Project, WordTiming } from '@shared/types'
 import { emit } from './events'
@@ -31,6 +32,9 @@ import * as eleven from './services/elevenlabs'
 import * as gemini from './services/gemini'
 import * as localtts from './services/localtts'
 import { timeScript, whisperReady } from './whisper'
+
+/** How a relax video's narrator speaks (calm or whispered); null for an ordinary story. */
+export const deliveryOf = (p: Project): ReturnType<typeof relaxDelivery> | null => (p.editor.relax ? relaxDelivery(p.editor.relax.voice) : null)
 
 /**
  * Voices many scenes in one continuous take and cuts it per scene. A single take keeps the voice, pace and
@@ -119,7 +123,7 @@ async function whisperTimes(take: string, words: string[], p: Project, total: nu
 
 async function geminiTake(p: Project, voice: string, group: Clip[], tmp: string, ctx: TaskCtx, note: () => void): Promise<Segment[]> {
   // A long pause between scenes gives the cutter a clear gap to find.
-  const wav = await gemini.speak(group.map((c) => c.narration.trim()).join('\n<long pause>\n'), voice, p.language, ctx.signal)
+  const wav = await gemini.speak(group.map((c) => c.narration.trim()).join('\n<long pause>\n'), voice, p.language, ctx.signal, deliveryOf(p)?.gemini)
   const take = join(tmp, `take-${randomUUID()}.wav`)
   writeFileSync(take, wav)
   const total = (await probeDurationMs(take)) / 1000
@@ -232,14 +236,15 @@ async function elevenTake(
   tmp: string,
   ctx: TaskCtx
 ): Promise<Segment[]> {
-  const r = await eleven.speak(group.map((c) => c.narration.trim()).join('\n\n'), voice, p.language, ctx.signal, context)
+  const d = deliveryOf(p)
+  const r = await eleven.speak(group.map((c) => c.narration.trim()).join('\n\n'), voice, p.language, ctx.signal, context, d ? { speed: d.elevenSpeed, tag: d.elevenTag } : undefined)
   const take = join(tmp, `take-${randomUUID()}.mp3`)
   writeFileSync(take, r.audio)
   return splitByWords(group, take, r.words, tmp, ctx)
 }
 
-async function edgeTake(voice: string, group: Clip[], tmp: string, ctx: TaskCtx): Promise<Segment[]> {
-  const r = await edge.speak(edge.joinScenes(group.map((c) => c.narration)), voice, ctx.signal)
+async function edgeTake(p: Project, voice: string, group: Clip[], tmp: string, ctx: TaskCtx): Promise<Segment[]> {
+  const r = await edge.speak(edge.joinScenes(group.map((c) => c.narration)), voice, ctx.signal, deliveryOf(p)?.edgeRate)
   const take = join(tmp, `take-${randomUUID()}.mp3`)
   writeFileSync(take, r.audio)
   return splitByWords(group, take, r.words, tmp, ctx)
@@ -280,7 +285,8 @@ function store(p: Project, s: Segment, voice: string, takeId: string, bytes: Buf
   })
   emit.asset(asset)
   // Each piece already carries half of the pause on either side, so the pieces play back as the one take.
-  const durationMs = Math.max(1500, s.durationMs)
+  // Sleep and meditation scenes hold a while longer in silence.
+  const durationMs = Math.max(1500, s.durationMs) + relaxHoldMs(p.editor)
   // A new take starts untrimmed at the clip's start.
   const patch = { audioAssetId: asset.id, durationMs, voiceInMs: 0, voiceOutMs: null, voiceStartMs: 0 }
   patchClip(s.clip.id, patch)
@@ -322,7 +328,7 @@ export function generateNarration(projectId: string, mode: 'missing' | 'all'): J
                 ctx
               )
             : p.ttsProvider === 'edge'
-              ? await edgeTake(voice, group, tmp, ctx)
+              ? await edgeTake(p, voice, group, tmp, ctx)
               : p.ttsProvider === 'local'
                 ? await localTake(p, voice, group, tmp, ctx)
                 : await geminiTake(p, voice, group, tmp, ctx, () =>

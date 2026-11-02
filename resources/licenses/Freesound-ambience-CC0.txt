@@ -1,0 +1,21 @@
+Story Creator ambience library (resources/sfx/ambience)
+
+Recordings from Freesound (https://freesound.org), all released under Creative Commons 0 (CC0 1.0,
+https://creativecommons.org/publicdomain/zero/1.0/). Credit is not required; it is given as thanks.
+They were trimmed to seamless loops and loudness-matched for this app.
+
+rain-roof.ogg  "Rain on the House Roof Window #001" by bassimat  https://freesound.org/s/833924/
+rain-tent.ogg  "In the Tent - Rain" by pulswelle  https://freesound.org/s/251233/
+rain-night.ogg  "Rain at night" by ThabzMalik  https://freesound.org/s/767061/
+thunderstorm.ogg  "Rainy night with thunder and water dropping" by BonnyOrbit  https://freesound.org/s/399682/
+ocean.ogg  "Baltic Sea II - Zingst/Germany" by pulswelle  https://freesound.org/s/667010/
+river.ogg  "Relaxing River Sound" by IceVFX  https://freesound.org/s/722875/
+fireplace.ogg  "Fireplace for Six Minutes (Stereo)" by petebuchwald  https://freesound.org/s/496130/
+campfire.ogg  "Campfire 02" by HECKFRICKER  https://freesound.org/s/729396/
+forest.ogg  "Nord_Odal_Nyhus quiet forest birds insects leaf rustle 02" by nfsgit  https://freesound.org/s/121965/
+crickets.ogg  "Village Night Crickets" by savvah  https://freesound.org/s/400353/
+wind.ogg  "WNW Wind and Snow on Holehead Hill" by Sandy-Ogilvie  https://freesound.org/s/849302/
+cafe.ogg  "Ambience Coffee" by Matias44  https://freesound.org/s/689957/
+fan.ogg  "Fan, setting 1" by giddster  https://freesound.org/s/437342/
+
+whitenoise.ogg, pinknoise.ogg, brownnoise.ogg: generated with FFmpeg for Story Creator, released under CC0.

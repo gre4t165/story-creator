@@ -9,6 +9,7 @@ import { estimateWordTimings } from '@shared/captions'
 import { stripVoiceTags } from '@shared/speech'
 import type { Clip, ImportResult, TtsOverride, TtsProvider } from '@shared/types'
 import { emit } from './events'
+import { requirePro } from './license'
 import { generateClipImage, generateClipTts } from './generation'
 import { syncCaptions } from './narration'
 import { assetAbsPath, binPath } from './paths'
@@ -266,6 +267,7 @@ export async function importClipFile(clipId: string, kind: Kind): Promise<boolea
  * fill the scenes in file-name order from the first one.
  */
 export async function importBatch(projectId: string, kind: Kind): Promise<ImportResult | null> {
+  requirePro('batch-import')
   const files = await pick(kind === 'image' ? 'Pilih beberapa gambar atau video (urut sesuai adegan)' : 'Pilih beberapa rekaman suara (urut sesuai adegan)', kind, true)
   if (!files.length) return null
   getProject(projectId)
@@ -350,6 +352,7 @@ function toEntry(raw: unknown, kind: Kind): Entry | null {
  * `generate` is true, since drawing can cost credits.
  */
 export async function importJson(projectId: string, kind: Kind): Promise<ImportResult | null> {
+  requirePro('batch-import')
   const [file] = await pick(kind === 'image' ? 'Pilih file JSON gambar' : 'Pilih file JSON suara', 'json', false)
   if (!file) return null
   getProject(projectId)
@@ -436,6 +439,8 @@ export async function importJson(projectId: string, kind: Kind): Promise<ImportR
 
 /** Files dropped on a clip card: the first picture and voice go to that clip, more go to the clips after it. */
 export async function importDropped(clipId: string, paths: string[]): Promise<ImportResult> {
+  // One file on one clip is the same as picking it; several files at once is a batch.
+  if (paths.length > 1) requirePro('batch-import')
   const clip = getClip(clipId)
   const start = clipsOf(clip.projectId).findIndex((c) => c.id === clipId) + 1
   const ext = (p: string): string => extname(p).slice(1).toLowerCase()

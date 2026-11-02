@@ -59,6 +59,10 @@ const api: StudioApi = {
     pickImage: call('assets:pickImage'),
     musicBeats: call('assets:musicBeats')
   },
+  relax: {
+    pickAmbience: call('relax:pickAmbience'),
+    generateAmbience: call('relax:generateAmbience')
+  },
   imports: {
     clipFile: call('imports:clipFile'),
     batch: call('imports:batch'),
@@ -87,6 +91,13 @@ const api: StudioApi = {
     defaultFolder: call('export:defaultFolder'),
     pickFolder: call('export:pickFolder'),
     reveal: call('export:reveal')
+  },
+  license: {
+    get: call('license:get'),
+    activate: call('license:activate'),
+    deactivate: call('license:deactivate'),
+    refresh: call('license:refresh'),
+    require: call('license:require')
   },
   app: {
     openExternal: call('app:openExternal'),

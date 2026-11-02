@@ -49,6 +49,37 @@ export interface EditorSettings {
   sfx?: SfxItem[]
   /** Volume change for all sound effects, in dB. */
   sfxVolumeDb?: number
+  /** Set for sleep, meditation and ambience videos: long, looping, with ambient sound (see shared/relax.ts). */
+  relax?: RelaxSettings
+}
+
+export type RelaxKind = 'sleep' | 'meditation' | 'ambience'
+/** How the narrator speaks: calm and slow, or a soft ASMR whisper. */
+export type RelaxVoice = 'calm' | 'whisper'
+
+/** One ambient sound that plays for the whole video, looping: a library recording, or an asset (imported or made by AI). */
+export interface AmbienceLayer {
+  id: string
+  /** Library file, a path inside resources/sfx (e.g. "ambience/rain-roof.ogg"). */
+  file?: string
+  /** An asset of kind "ambience". */
+  assetId?: string
+  label: string
+  volumeDb: number
+}
+
+export interface RelaxSettings {
+  kind: RelaxKind
+  /** Length of the exported video; after the story the pictures keep looping under the sound. */
+  lengthSec: number
+  voice: RelaxVoice
+  layers: AmbienceLayer[]
+  /** Volume change for all ambience layers, in dB. */
+  volumeDb?: number
+  /** Sound and picture fade out over this many seconds at the very end. */
+  fadeOutSec: number
+  /** The picture fades to black after this many seconds while the sound keeps going (null: never). */
+  dimAfterSec: number | null
 }
 
 /** One sound effect on the timeline, from the CC0 library in resources/sfx (see shared/sfx.ts). */
@@ -185,7 +216,8 @@ export interface Clip {
   audioAssetId: string | null
 }
 
-export type AssetKind = 'image' | 'video' | 'audio' | 'music' | 'overlay' | 'export'
+/** ambience: a sound for the ambience layers of a relax video, imported or made by ElevenLabs. */
+export type AssetKind = 'image' | 'video' | 'audio' | 'music' | 'ambience' | 'overlay' | 'export'
 
 export interface WordTiming {
   text: string

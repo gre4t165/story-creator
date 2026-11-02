@@ -6,6 +6,7 @@ import { closeDb, getDb } from './db'
 import { attachDevHarness, prepareHarness } from './devharness'
 import { resumeJobs } from './generation'
 import { registerIpc } from './ipc'
+import { startLicenseChecks } from './license'
 import { handleStudioProtocol, registerSchemes } from './protocol'
 import { warmUpEncryption } from './secrets'
 import { getSettings } from './settings'
@@ -101,6 +102,7 @@ if (!single) {
     registerIpc()
     createWindow()
     resumeJobs()
+    startLicenseChecks()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

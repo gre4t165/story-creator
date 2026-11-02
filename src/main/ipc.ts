@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { copyFileSync, mkdirSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import type { LicenseFeature } from '@shared/license'
 import type {
   ApiProvider,
   AppSettings,
@@ -19,6 +20,7 @@ import type {
 } from '@shared/types'
 import { PAPER } from '@shared/appearance'
 import { startExport } from './exporter'
+import { activate, assertCanAddProject, deactivate, licenseState, refreshLicense, requirePro } from './license'
 import {
   estimateCredits,
   forgetEstimates,
@@ -34,6 +36,7 @@ import {
 import { detectBeats } from './beats'
 import { devPick, importBatch, importClipFile, importDropped, importJson } from './importer'
 import { cancelJob } from './jobs'
+import { generateAmbience, pickAmbience } from './relax'
 import { generateNarration, syncCaptions } from './narration'
 import { cancelDownload, downloadModel, openModelFolder, removeModel, whisperStatus } from './whisper'
 import { assetAbsPath } from './paths'
@@ -92,11 +95,17 @@ function defaultExportFolder(): string {
 
 export function registerIpc(): void {
   handle('projects:list', () => listProjects())
-  handle('projects:create', (input: NewProjectInput) => getBundle(createProject(input).id))
+  handle('projects:create', (input: NewProjectInput) => {
+    assertCanAddProject()
+    return getBundle(createProject(input).id)
+  })
   handle('projects:get', (id: string) => getBundle(id))
   handle('projects:save', (snap: ProjectSnapshot) => ({ updatedAt: saveSnapshot(snap) }))
   handle('projects:remove', (id: string) => removeProject(id))
-  handle('projects:duplicate', (id: string) => duplicateProject(id))
+  handle('projects:duplicate', (id: string) => {
+    assertCanAddProject()
+    return duplicateProject(id)
+  })
   handle('projects:setLinks', (projectId: string, links: LinkRestore) => restoreLinks(projectId, links))
 
   handle('story:script', (projectId: string) => generateScript(projectId))
@@ -153,6 +162,8 @@ export function registerIpc(): void {
     emit.asset(fresh)
     return fresh
   })
+  handle('relax:pickAmbience', (projectId: string) => pickAmbience(projectId))
+  handle('relax:generateAmbience', (projectId: string, description: string, seconds: number) => generateAmbience(projectId, description, Number(seconds) || 20))
   handle('assets:pickMusic', async (projectId: string) => {
     const win = BrowserWindow.getFocusedWindow()
     const res = devPick() ?? (await dialog.showOpenDialog(win!, {
@@ -272,6 +283,16 @@ export function registerIpc(): void {
     setSettings({ localTtsUrl: clean })
     return localtts.testConnection()
   })
+
+  handle('license:get', () => licenseState())
+  handle('license:activate', (code: string) => activate(String(code ?? '')))
+  handle('license:deactivate', () => deactivate())
+  handle('license:refresh', async () => {
+    await refreshLicense(true)
+    return licenseState()
+  })
+  // Features that only exist in the editor (not in a main-process action) ask here first, so the decision stays in this process.
+  handle('license:require', (feature: LicenseFeature) => requirePro(feature))
 
   handle('export:start', (projectId: string, opts: ExportOptions) => startExport(projectId, opts))
   handle('export:defaultFolder', () => defaultExportFolder())

@@ -1,0 +1,15 @@
+name = "story-creator-license"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# Berapa komputer yang boleh memakai satu kode aktivasi.
+[vars]
+MAX_DEVICES = "2"
+# Untuk uji coba dengan sandbox Mayar, ganti sementara menjadi "https://api.mayar.club":
+# MAYAR_BASE = "https://api.mayar.club"
+
+# Daftar komputer per kode. Buat dulu: npx wrangler kv namespace create DEVICES
+# lalu tempel id yang muncul di bawah ini.
+[[kv_namespaces]]
+binding = "DEVICES"
+id = "GANTI_DENGAN_ID_KV"

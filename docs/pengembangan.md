@@ -88,7 +88,8 @@ node_modules\electron\dist\electron.exe .
 | `main: "videos"` | memberi semua klip video uji 6 detik (klip 1 diberi zoom kuat) |
 | `main: "overlays"` | menambah logo dan teks overlay demo |
 | `main: "key"` + `provider`, `ok` | menyimpan kunci palsu dengan status tes lulus/gagal |
-| `main: "export"` + `exportTo`, `projectId` | mengekspor proyek demo (atau proyek tertentu) ke folder |
+| `main: "relax"` + `relax` | menjadikan proyek demo video relaksasi; `relax` menimpa pengaturan bawaan, misalnya `{ "kind": "sleep", "lengthSec": 150, "dimAfterSec": 60 }` untuk menguji loop dan layar gelap dengan cepat |
+| `main: "export"` + `exportTo`, `projectId`, `resolution` | mengekspor proyek demo (atau proyek tertentu) ke folder; `resolution` bawaan 1080 |
 | `js` | menjalankan JavaScript di halaman (boleh `async`); hasil `console.log` masuk ke `STUDIO_LOG` |
 | `drag` | seret mouse sungguhan: `selector`, `at` (`left`/`right`/`center`), `dx`, `fy` (posisi vertikal 0–1) |
 | `click` | klik mouse sungguhan: `selector`, `fx`, atau `pointJs` (JS yang mengembalikan `{x, y}`) |

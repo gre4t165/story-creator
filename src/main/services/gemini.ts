@@ -93,15 +93,17 @@ export async function generateJson(model: string, system: string, prompt: string
   }
 }
 
-/** Speaks one narration line. Returns a WAV file (24 kHz mono 16-bit). */
-export async function speak(text: string, voice: string, languageCode: string, signal?: AbortSignal): Promise<Buffer> {
+const NARRATOR = 'natural storytelling narrator, clear and engaging, steady pace'
+
+/** Speaks one narration line in `style` (a storyteller by default). Returns a WAV file (24 kHz mono 16-bit). */
+export async function speak(text: string, voice: string, languageCode: string, signal?: AbortSignal, style = NARRATOR): Promise<Buffer> {
   try {
     const res = await client().models.generateContent({
       model: getSettings().geminiTtsModel,
       contents: [
         {
           role: 'user',
-          parts: [{ text, speechMetadata: { style: 'natural storytelling narrator, clear and engaging, steady pace' } }]
+          parts: [{ text, speechMetadata: { style } }]
         }
       ],
       config: {

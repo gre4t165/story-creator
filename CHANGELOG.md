@@ -8,6 +8,33 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+### Ditambahkan
+- **Versi gratis dan Pro dengan kode aktivasi.** Gratis: ekspor sampai 720p 30 fps dengan watermark "Dibuat dengan Story
+  Creator", maksimal 3 proyek, tanpa SFX otomatis, tanpa Musik + atur gambar, dan tanpa impor sekaligus/JSON. Pro
+  menghilangkan semuanya. Aktivasi di **Pengaturan › Lisensi** dengan kode yang dikirim setelah pembayaran; satu kode
+  untuk 2 komputer; lisensi diperiksa offline dan diperbarui otomatis tiap 30 hari. Kontrol Pro bertanda kunci dan
+  membuka dialog "Fitur Pro".
+- **Server lisensi** (`license-server/`, Cloudflare Worker) yang memeriksa kode ke **Mayar.id** dan menandatangani lisensi
+  per komputer (Ed25519), beserta `npm run license:keys`, `npm run license:test`, dan panduan pemasangan.
+- Selama kunci dan server lisensi belum diisi, aplikasi tidak membatasi apa pun, jadi build yang terlanjur dirilis tanpa
+  konfigurasi tidak mengunci pengguna.
+- Menu Impor di Storyboard lebih lebar agar label tidak terlipat.
+- **Video tidur, meditasi, dan ambience.** Pilih jenis video di langkah Ide: **Cerita tidur** (cerita pelan tanpa
+  konflik), **Meditasi** (napas dan relaksasi tubuh, jeda hening panjang), atau **Ambience** (tanpa narasi, pemandangan
+  30 detik per adegan). Naskah, rencana visual (kamera halus, fade 2,5 detik), dan prompt musik ditulis sesuai jenisnya.
+  Narator bisa **Tenang dan pelan** atau **Berbisik (ASMR)** (ElevenLabs v3 dan Gemini; Edge dipelankan).
+- **Video sampai 10 jam.** Bagian cerita dirender sekali dengan adegan terakhir fade ke adegan pertama, lalu diulang
+  tanpa render ulang, jadi video berjam-jam tetap cepat diekspor. Pilihan **Layar gelap setelah** (gambar perlahan
+  hitam, suara tetap jalan) dan **Fade di akhir**. Versi gratis sampai 10 menit; lebih panjang khusus Pro.
+- **Tab Suasana di editor**: lapisan suara yang diulang sepanjang video dengan volume masing-masing, dari pustaka bawaan
+  (13 rekaman asli CC0 dari Freesound: hujan, petir, ombak, sungai, perapian, api unggun, hutan, jangkrik, angin, kafe,
+  kipas; plus white/pink/brown noise), dari file sendiri, atau dibuat **ElevenLabs Sound Effects** dari deskripsi
+  (loop mulus, memakai kredit ElevenLabs pengguna). Lapisan ikut terdengar di pratinjau.
+
+### Diubah
+- SFX otomatis untuk cerita biasa kini memilih rekaman suasana asli (hujan, laut, hutan, malam, dll.); suara sintetis
+  lama tetap ada di pustaka dengan label "(sintetis)".
+
 ## [1.3.0] - 2026-10-25
 
 ### Ditambahkan

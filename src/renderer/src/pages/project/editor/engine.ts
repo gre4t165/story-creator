@@ -149,6 +149,13 @@ export function itemAt(items: TimelineItem[], t: number): number {
 
 const dbToGain = (db: number): number => Math.pow(10, db / 20)
 
+/** An ambience layer as the preview plays it: looping for the whole timeline at its volume. */
+export interface AmbiencePlay {
+  key: string
+  url: string
+  db: number
+}
+
 /**
  * Drives the clock and keeps narration and music audio in step with it. An audio element cannot play louder
  * than its file, so when a volume is raised above 0 dB everything is scaled down together: the preview gets
@@ -163,11 +170,31 @@ export function usePlaybackEngine(
   voiceDb = 0,
   musicRange: { startSec: number; endSec: number; inSec: number } = { startSec: 0, endSec: Infinity, inSec: 0 },
   sfx: SfxItem[] = [],
-  sfxDb = 0
+  sfxDb = 0,
+  ambience: AmbiencePlay[] = []
 ): void {
   const voices = useRef(new Map<string, HTMLAudioElement>())
   const musicEl = useRef<HTMLAudioElement | null>(null)
   const sfxEls = useRef(new Map<string, HTMLAudioElement>())
+  const ambienceEls = useRef(new Map<string, HTMLAudioElement>())
+
+  useEffect(() => {
+    const map = ambienceEls.current
+    const keep = new Set(ambience.map((a) => a.key))
+    for (const it of ambience) {
+      if (map.has(it.key)) continue
+      const a = new Audio(it.url)
+      a.preload = 'auto'
+      a.loop = true
+      map.set(it.key, a)
+    }
+    for (const [key, a] of map) {
+      if (!keep.has(key)) {
+        a.pause()
+        map.delete(key)
+      }
+    }
+  }, [ambience])
 
   useEffect(() => {
     const map = sfxEls.current
@@ -229,7 +256,7 @@ export function usePlaybackEngine(
     let last = performance.now()
     const voiceGain = (it: TimelineItem): number => dbToGain(voiceDb + (it.clip.voiceGainDb ?? 0))
     const sfxGain = (it: SfxItem): number => dbToGain(it.volumeDb + sfxDb)
-    const loudest = Math.max(1, dbToGain(musicDb), ...items.filter((it) => it.audio).map(voiceGain), ...sfx.map(sfxGain))
+    const loudest = Math.max(1, dbToGain(musicDb), ...items.filter((it) => it.audio).map(voiceGain), ...sfx.map(sfxGain), ...ambience.map((a) => dbToGain(a.db)))
     const sync = (t: number, playing: boolean): void => {
       let voiceActive = false
       items.forEach((it) => {
@@ -275,6 +302,18 @@ export function usePlaybackEngine(
           } else if (!play.loop && Math.abs(a.currentTime - target) > 0.3) a.currentTime = target
         } else if (!a.paused) a.pause()
       }
+      // Ambience layers loop under the whole video, as in the export (shared/relax.ts).
+      for (const it of ambience) {
+        const a = ambienceEls.current.get(it.key)
+        if (!a) continue
+        a.volume = Math.min(1, dbToGain(it.db) / loudest)
+        if (playing) {
+          if (a.paused) {
+            a.currentTime = a.duration ? t % a.duration : 0
+            void a.play().catch(() => {})
+          }
+        } else if (!a.paused) a.pause()
+      }
     }
     const tick = (now: number): void => {
       const s = usePlayback.getState()
@@ -294,8 +333,9 @@ export function usePlaybackEngine(
       for (const a of voices.current.values()) a.pause()
       musicEl.current?.pause()
       for (const a of sfxEls.current.values()) a.pause()
+      for (const a of ambienceEls.current.values()) a.pause()
     }
-  }, [items, total, musicDb, duck, voiceDb, musicRange.startSec, musicRange.endSec, musicRange.inSec, sfx, sfxDb])
+  }, [items, total, musicDb, duck, voiceDb, musicRange.startSec, musicRange.endSec, musicRange.inSec, sfx, sfxDb, ambience])
 
   useEffect(() => () => usePlayback.setState({ playing: false }), [])
 }

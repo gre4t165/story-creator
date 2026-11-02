@@ -3,6 +3,7 @@ import { randomMotions } from '@shared/motion'
 import { fitClipsToMusic } from '@shared/timeline'
 import { confirmDialog } from '../components/ui'
 import { useApp } from '../store/app'
+import { useLicense } from '../store/license'
 import { useProject } from '../store/project'
 import { errorText, mmss } from './format'
 
@@ -19,6 +20,7 @@ export function useMusicFit(): { busy: boolean; fit(pickNew: boolean): Promise<v
     const s = useProject.getState()
     const project = s.project
     if (!project || busy) return
+    if (!(await useLicense.getState().ensure('music-fit'))) return
     setBusy(true)
     try {
       await s.flush()

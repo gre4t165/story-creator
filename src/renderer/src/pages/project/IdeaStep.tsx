@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bot, Play, Sparkles, Square } from 'lucide-react'
+import { Bot, Lock, Play, Sparkles, Square } from 'lucide-react'
 import { getFreeImageModel } from '@shared/freemodels'
 import { getImageModel } from '@shared/higgsfield'
+import { FREE_LIMITS } from '@shared/license'
 import { DURATIONS, LANGUAGES, clipCountFor, defaultEdgeVoice, defaultVoiceFor, llmName } from '@shared/models'
+import { RELAX_KINDS, RELAX_LENGTHS, RELAX_STORY_DURATIONS, newRelaxSettings, relaxClipCount } from '@shared/relax'
 import { getStyle } from '@shared/styles'
-import type { KeyStatus, LlmProvider, TtsProvider, VoiceOption } from '@shared/types'
+import type { KeyStatus, LlmProvider, RelaxKind, TtsProvider, VoiceOption } from '@shared/types'
 import { Select } from '../../components/Select'
 import { StylePicker } from '../../components/StylePicker'
 import { Button, Chip, Field, Segmented, confirmDialog, cx } from '../../components/ui'
@@ -12,6 +14,7 @@ import { errorText } from '../../lib/format'
 import { geminiPreview } from '../../lib/voicePreviews'
 import { TTS_NAMES, TTS_ORDER, ttsReadiness, usableImageModel, usableTts } from '../../lib/keys'
 import { useApp } from '../../store/app'
+import { useIsPro, useLicense } from '../../store/license'
 import { useProject } from '../../store/project'
 import { ModelSection } from './ModelSection'
 
@@ -103,8 +106,37 @@ function VoicePicker({ provider, language, value, onChange }: { provider: TtsPro
   )
 }
 
+/** What each kind of video asks for in the idea box. */
+const IDEA_COPY: Record<RelaxKind | 'story', { label: string; placeholder: string; tip: string; duration: string }> = {
+  story: {
+    label: 'Ide cerita atau sinopsis',
+    placeholder: 'Tahun 1336 di istana Majapahit. Gajah Mada bersumpah tidak akan menikmati palapa sebelum Nusantara bersatu…',
+    tip: 'Tips: tulis juga suasana yang kamu mau, misalnya tegang, lucu, atau haru.',
+    duration: 'Durasi video'
+  },
+  sleep: {
+    label: 'Ide cerita pengantar tidur',
+    placeholder: 'Perjalanan pelan menyusuri desa di kaki gunung saat hujan sore, singgah di warung teh, lalu pulang ke rumah kayu yang hangat…',
+    tip: 'Tips: pilih tempat yang damai dan perjalanan yang pelan. Tanpa konflik, tanpa kejutan.',
+    duration: 'Panjang cerita'
+  },
+  meditation: {
+    label: 'Tema meditasi',
+    placeholder: 'Meditasi sebelum tidur: napas perlahan, relaksasi tubuh dari kepala sampai kaki, lalu membayangkan pantai sepi saat senja…',
+    tip: 'Tips: sebut tujuannya (tidur, cemas, fokus) dan tempat yang ingin dibayangkan.',
+    duration: 'Panjang meditasi'
+  },
+  ambience: {
+    label: 'Tempat dan suasana',
+    placeholder: 'Pondok kayu di tengah hutan pinus saat hujan malam: jendela berembun, perapian menyala, teras basah, lampu temaram…',
+    tip: 'Tips: satu tempat dengan beberapa sudut pandang. Suaranya dipilih di editor, bagian Suasana.',
+    duration: 'Jumlah pemandangan'
+  }
+}
+
 export function IdeaStep() {
-  const { project, clips, updateProject, flush, load, record } = useProject()
+  const { project, clips, updateProject, updateEditor, batch, flush, load, record } = useProject()
+  const pro = useIsPro()
   const { toast, go } = useApp()
   const [busy, setBusy] = useState(false)
   const [writer, setWriter] = useState<{ provider: LlmProvider; model: string } | null>(null)
@@ -139,8 +171,33 @@ export function IdeaStep() {
     go({ name: 'settings', back: { name: 'project', id: project.id } })
   }
 
-  const clipCount = clipCountFor(project.durationSec)
+  const relax = project.editor.relax
+  const copy = IDEA_COPY[relax?.kind ?? 'story']
+  const durations = relax ? RELAX_STORY_DURATIONS[relax.kind] : DURATIONS
+  const clipCount = relax ? relaxClipCount(relax.kind, project.durationSec) : clipCountFor(project.durationSec)
   const perClip = Math.round(project.durationSec / clipCount)
+
+  /** Story or one of the relax kinds; one undo step for the kind, its story length and the caption style. */
+  const setKind = (kind: RelaxKind | 'story'): void => {
+    if (kind === (relax?.kind ?? 'story')) return
+    const list = kind === 'story' ? DURATIONS : RELAX_STORY_DURATIONS[kind]
+    const durationSec = list.some((d) => d.sec === project.durationSec) ? project.durationSec : list[Math.min(1, list.length - 1)].sec
+    batch('Jenis video', () => {
+      if (kind === 'story') {
+        updateEditor({ relax: undefined, captionStyle: project.editor.captionStyle === 'none' ? 'karaoke' : project.editor.captionStyle })
+      } else {
+        // Sleep videos have no captions on screen; the subtitle file can still be exported for YouTube.
+        updateEditor({ relax: relax ? { ...relax, kind } : newRelaxSettings(kind), captionStyle: 'none' })
+      }
+      updateProject({ durationSec })
+    })
+  }
+
+  const pickLength = async (sec: number): Promise<void> => {
+    if (!relax) return
+    if (sec > FREE_LIMITS.maxRelaxSec && !(await useLicense.getState().ensure('relax-long'))) return
+    updateEditor({ relax: { ...relax, lengthSec: sec } })
+  }
   const model = getFreeImageModel(project.imageModel) ?? getImageModel(project.imageModel)
 
   const compose = async (): Promise<void> => {
@@ -185,9 +242,20 @@ export function IdeaStep() {
               </p>
             </div>
 
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-semibold">Jenis video</span>
+              <Segmented
+                value={relax?.kind ?? 'story'}
+                onChange={setKind}
+                className="self-start"
+                options={[{ id: 'story' as const, label: 'Cerita' }, ...RELAX_KINDS.map((k) => ({ id: k.id, label: k.label, title: k.hint }))]}
+              />
+              {relax && <span className="text-[13px] text-muted">{RELAX_KINDS.find((k) => k.id === relax.kind)?.hint} Video bisa sampai 10 jam: gambarnya diulang mulus di bawah suara suasana.</span>}
+            </div>
+
             <div className="flex flex-col gap-2 rounded-2xl border-[1.5px] border-ink bg-surface px-[18px] pb-3 pt-4 shadow-ink-md">
               <label htmlFor="sinopsis" className="text-[13px] font-semibold text-ink-2">
-                Ide cerita atau sinopsis
+                {copy.label}
               </label>
               <textarea
                 id="sinopsis"
@@ -195,28 +263,48 @@ export function IdeaStep() {
                 value={project.synopsis}
                 maxLength={4000}
                 onChange={(e) => updateProject({ synopsis: e.target.value })}
-                placeholder="Tahun 1336 di istana Majapahit. Gajah Mada bersumpah tidak akan menikmati palapa sebelum Nusantara bersatu…"
+                placeholder={copy.placeholder}
                 className="resize-none bg-transparent text-base leading-relaxed outline-none placeholder:text-muted/70"
               />
               <div className="flex items-center justify-between text-xs text-muted">
-                <span>Tips: tulis juga suasana yang kamu mau, misalnya tegang, lucu, atau haru.</span>
+                <span>{copy.tip}</span>
                 <span className="font-mono">{project.synopsis.length.toLocaleString('id-ID')} / 4.000</span>
               </div>
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-semibold">Durasi video</span>
+              <span className="text-sm font-semibold">{copy.duration}</span>
               <div className="flex flex-wrap gap-2">
-                {DURATIONS.map((d) => (
+                {durations.map((d) => (
                   <Chip key={d.sec} on={project.durationSec === d.sec} onClick={() => updateProject({ durationSec: d.sec })} className="h-10 px-4">
                     {d.label}
                   </Chip>
                 ))}
               </div>
               <span className="text-[13px] text-muted">
-                Sekitar {clipCount} klip, masing-masing kurang lebih {perClip} detik. Durasi akhir mengikuti panjang suara narasi.
+                {relax?.kind === 'ambience'
+                  ? `${clipCount} pemandangan, masing-masing ${perClip} detik, lalu diulang.`
+                  : `Sekitar ${clipCount} klip, masing-masing kurang lebih ${perClip} detik. Durasi akhir mengikuti panjang suara narasi.`}
               </span>
             </div>
+
+            {relax && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-semibold">Panjang video akhir</span>
+                <div className="flex flex-wrap gap-2">
+                  {RELAX_LENGTHS.map((l) => (
+                    <Chip key={l.sec} on={relax.lengthSec === l.sec} onClick={() => void pickLength(l.sec)} className="h-10 px-4">
+                      {!pro && l.sec > FREE_LIMITS.maxRelaxSec && <Lock className="size-3.5" />}
+                      {l.label}
+                    </Chip>
+                  ))}
+                </div>
+                <span className="text-[13px] text-muted">
+                  Setelah {relax.kind === 'ambience' ? 'semua pemandangan tampil' : 'cerita selesai'}, gambar diulang mulus sampai panjang ini. Bisa diubah lagi di editor.
+                  {!pro && ` Versi gratis sampai 10 menit.`}
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-5">
               <Field label="Bahasa naskah dan suara">
@@ -263,8 +351,27 @@ export function IdeaStep() {
               </div>
             </div>
 
+            {relax?.kind !== 'ambience' && (
             <div className="flex flex-col gap-2">
               <span className="text-sm font-semibold">Suara narator</span>
+              {relax && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Segmented
+                    size="sm"
+                    value={relax.voice}
+                    onChange={(v) => updateEditor({ relax: { ...relax, voice: v } })}
+                    options={[
+                      { id: 'calm' as const, label: 'Tenang dan pelan' },
+                      { id: 'whisper' as const, label: 'Berbisik (ASMR)' }
+                    ]}
+                  />
+                  <span className="text-[13px] text-muted">
+                    {relax.voice === 'whisper'
+                      ? 'Bisikan paling meyakinkan di ElevenLabs (model v3) dan Gemini. Edge hanya dipelankan; Voicebox memakai gaya suaranya sendiri.'
+                      : 'Narator dipelankan dan diberi jeda panjang di semua layanan, kecuali Voicebox yang memakai gaya suaranya sendiri.'}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Segmented
                   value={project.ttsProvider}
@@ -299,6 +406,7 @@ export function IdeaStep() {
                 </span>
               )}
             </div>
+            )}
 
             <ModelSection
               project={project}

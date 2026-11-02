@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { ConfirmHost } from './components/ui'
 import { Toasts } from './components/Toasts'
+import { UpgradeDialog } from './components/UpgradeDialog'
+import { useLicense } from './store/license'
 import { applyAccent } from './lib/theme'
 import { Home } from './pages/Home'
 import { ProjectPage } from './pages/project/ProjectPage'
@@ -21,6 +23,11 @@ export function App() {
 
   useEffect(() => {
     void window.api.settings.get().then((s) => applyAccent(s.accent))
+    void useLicense.getState().load()
+    // The license can change while the app is open (renewed, or refused after a refund): look again when it is used.
+    const onFocus = (): void => void useLicense.getState().load()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [])
 
   useEffect(() => {
@@ -76,6 +83,7 @@ export function App() {
       {route.name === 'project' && <ProjectPage key={route.id} id={route.id} />}
       <Toasts />
       <ConfirmHost />
+      <UpgradeDialog />
     </>
   )
 }

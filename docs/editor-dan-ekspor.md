@@ -76,6 +76,28 @@ Aturan edit (`renderer/src/pages/project/editor/Timeline.tsx`):
      out → `adelay`; turunkan musik saat narasi dengan `sidechaincompress`; `loudnorm` −14 LUFS (opsional).
 4. Hasil: MP4 (H.264 + AAC, `+faststart`), dan `.srt` opsional. Nama file yang sudah ada diberi akhiran `-2`, `-3`.
 
+### Video relaksasi panjang (`renderRelax`)
+
+Proyek dengan `editor.relax` (cerita tidur, meditasi, ambience) diekspor lain, supaya video 10 jam tidak merender
+10 jam gambar:
+
+1. Panjang akhir: `relaxLengthSec` (`shared/relax.ts`): tidak pernah lebih pendek dari ceritanya, maksimal 10 jam,
+   dan 10 menit di versi gratis (diputuskan di main dengan `isPro()`).
+2. Klip direncanakan dengan **salinan klip pertama di akhir**; klip terakhir dipaksa fade `LOOP_FADE_SEC` ke salinan itu
+   (file segmennya sama dengan klip pertama). Satu pass gambar menghasilkan dua file MPEG-TS: `head.ts` (frame sebelum
+   fade selesai) dan `loop.ts` (dari titik itu sepanjang cerita). Akhir `loop.ts` menyambung tepat ke frame awalnya,
+   jadi pengulangan tidak terlihat.
+3. Urutan potongan: `head | loop | loop | … | [dim.ts (fade 20 dtk ke hitam) | black.ts 60 dtk … | blacktail.ts] | tail.ts`.
+   Layar gelap dimulai di sambungan loop pertama setelah `dimAfterSec`. `tail.ts` adalah sisa durasi dari loop dengan
+   fade di akhir. Semua potongan memakai pengaturan encoder yang sama (`pieceEncoder`, CRF lebih tinggi) supaya bisa
+   disambung dengan **concat demuxer tanpa encode ulang**.
+4. Suara dibuat sekali sepanjang video (`audioGraph` dengan `out` = panjang akhir): narasi dan SFX di posisinya,
+   lapisan suasana `-stream_loop -1` dari awal sampai akhir (fade in 3 dtk), musik tanpa batas akhir ikut diulang,
+   fade out `fadeOutSec`, lalu `alimiter` (bukan `loudnorm`, yang terlalu lambat untuk berjam-jam audio). AAC 128k.
+5. Caption tidak pernah ditempel (akan ikut terulang); `.srt` tetap bisa disimpan. Teks dan logo overlay ikut berulang.
+
+Pratinjau memutar bagian cerita saja, dengan lapisan suasana (`AmbiencePlay` di `engine.ts`) diputar loop.
+
 ### Caption di ekspor
 
 - File ASS dibuat `buildAss`. Ukuran font dikonversi dengan metrik `cell` tiap font (libass mengukur font dengan

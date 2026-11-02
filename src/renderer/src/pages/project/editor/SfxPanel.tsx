@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Pause, Play, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react'
+import { Lock, Pause, Play, Plus, RefreshCw, Sparkles, Trash2 } from 'lucide-react'
 import { create } from 'zustand'
 import { SFX_CATEGORIES, SFX_SOUNDS, autoSfx, newSfxItem, sfxPlay, sfxSound, sfxUrl, type SfxCategory } from '@shared/sfx'
 import type { SfxItem } from '@shared/types'
@@ -7,6 +7,7 @@ import { Select } from '../../../components/Select'
 import { Button, Chip, IconButton, confirmDialog, cx } from '../../../components/ui'
 import { timecode } from '../../../lib/format'
 import { useApp } from '../../../store/app'
+import { useIsPro, useLicense } from '../../../store/license'
 import { useProject } from '../../../store/project'
 import { usePlayback } from './engine'
 
@@ -73,6 +74,7 @@ export function SfxPanel({ total }: { total: number }) {
   const selectedId = useSfxUi((s) => s.selectedId)
   const select = useSfxUi((s) => s.select)
   const tryOut = useTryOut()
+  const pro = useIsPro()
   const [category, setCategory] = useState<SfxCategory>('suasana')
   if (!project) return null
   const items = project.editor.sfx ?? []
@@ -80,6 +82,7 @@ export function SfxPanel({ total }: { total: number }) {
   const selSound = sel ? sfxSound(sel.sound) : undefined
 
   const makeAuto = async (): Promise<void> => {
+    if (!(await useLicense.getState().ensure('auto-sfx'))) return
     const hadAuto = items.some((s) => s.auto)
     if (hadAuto) {
       const ok = await confirmDialog({
@@ -134,7 +137,7 @@ export function SfxPanel({ total }: { total: number }) {
           langkah, atau ledakan. Semua suara bawaan berlisensi CC0, aman dipakai di YouTube.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="accent" icon={<Sparkles className="size-4" />} disabled={!clips.length} onClick={() => void makeAuto()}>
+          <Button size="sm" variant="accent" icon={pro ? <Sparkles className="size-4" /> : <Lock className="size-4" />} disabled={!clips.length} onClick={() => void makeAuto()}>
             {items.some((s) => s.auto) ? 'Buat ulang SFX otomatis' : 'Buat SFX otomatis'}
           </Button>
           {items.length > 0 && (

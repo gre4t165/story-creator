@@ -5,6 +5,7 @@ import { estimateWordTimings } from '@shared/captions'
 import { avoidTerms, faceSafe, imageRules, imageRulesShort, normalizeRules, sheetViews, videoRules, type ContentRules } from '@shared/content'
 import { FREE_PROVIDER_NAMES, getFreeImageModel, type FreeImageModel } from '@shared/freemodels'
 import { defaultVoiceFor } from '@shared/models'
+import { relaxHoldMs } from '@shared/relax'
 import { stripVoiceTags } from '@shared/speech'
 import { getImageModel, getVideoModel, imageBody, maxRefs, promptLimit, videoBody, type HfModel } from '@shared/higgsfield'
 import { getStyle } from '@shared/styles'
@@ -42,6 +43,7 @@ import * as hf from './services/higgsfield'
 import * as localtts from './services/localtts'
 import * as pollinations from './services/pollinations'
 import { downloadTo, sleep } from './services/http'
+import { deliveryOf } from './narration'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -524,18 +526,19 @@ export function generateClipTts(clipId: string, override: TtsOverride = {}): Job
     const voice = override.voice?.trim() || (provider === p.ttsProvider ? p.ttsVoice : '') || defaultVoiceFor(provider, p.language)
     if (provider === 'elevenlabs') {
       if (!voice) throw new Error('Pilih suara ElevenLabs dulu di langkah Ide cerita.')
-      const out = await eleven.speak(text, voice, p.language, ctx.signal)
+      const d = deliveryOf(p)
+      const out = await eleven.speak(text, voice, p.language, ctx.signal, undefined, d ? { speed: d.elevenSpeed, tag: d.elevenTag } : undefined)
       rel = saveFile(p.id, 'audio', '.mp3', out.audio)
       words = out.words
     } else if (provider === 'edge') {
-      const out = await edge.speak(text, voice, ctx.signal)
+      const out = await edge.speak(text, voice, ctx.signal, deliveryOf(p)?.edgeRate)
       rel = saveFile(p.id, 'audio', '.mp3', out.audio)
       words = out.words
     } else if (provider === 'local') {
       const wav = await localtts.speak(text, voice, p.language, ctx.signal)
       rel = saveFile(p.id, 'audio', '.wav', wav)
     } else {
-      const wav = await gemini.speak(text, voice, p.language, ctx.signal)
+      const wav = await gemini.speak(text, voice, p.language, ctx.signal, deliveryOf(p)?.gemini)
       rel = saveFile(p.id, 'audio', '.wav', wav)
     }
     ctx.progress(0.85, 'Mengukur durasi')
@@ -556,7 +559,7 @@ export function generateClipTts(clipId: string, override: TtsOverride = {}): Job
       meta: { words, estimatedTimings: estimated, voice }
     })
     emit.asset(asset)
-    const durationMs = Math.max(1500, audioMs + 400)
+    const durationMs = Math.max(1500, audioMs + 400) + relaxHoldMs(p.editor)
     const patch = { audioAssetId: asset.id, durationMs, voiceInMs: 0, voiceOutMs: null, voiceStartMs: 0 }
     patchClip(clipId, patch)
     emit.clip({ clipId, patch })

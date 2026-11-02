@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, Copy, FolderOpen, MoreHorizontal, Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Copy, FolderOpen, MoreHorizontal, Plus, Search, SlidersHorizontal, Sparkles, Trash2 } from 'lucide-react'
 import { DURATIONS, LANGUAGES, llmName } from '@shared/models'
 import { getStyle } from '@shared/styles'
 import type { ApiProvider, AppSettings, AspectRatio, KeyStatus, ProjectStatus, ProjectSummary, TtsProvider } from '@shared/types'
@@ -11,6 +11,7 @@ import { Badge, Button, Chip, IconButton, Menu, confirmDialog, cx } from '../com
 import { errorText, mmss, relativeTime } from '../lib/format'
 import { TTS_NAMES, TTS_ORDER, keyOk, ttsReadiness, usableTts } from '../lib/keys'
 import { useApp } from '../store/app'
+import { useLicense } from '../store/license'
 
 const STATUS: Record<ProjectStatus, { label: string; tone: 'draft' | 'info' | 'warn' | 'ok' }> = {
   draft: { label: 'Draf', tone: 'draft' },
@@ -45,6 +46,7 @@ const ASPECTS: SelectOption<AspectRatio>[] = [
 
 export function Home() {
   const { go, toast } = useApp()
+  const plan = useLicense((s) => s.state?.plan)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [keys, setKeys] = useState<KeyStatus[]>([])
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
@@ -155,6 +157,15 @@ export function Home() {
           />
         </label>
         <div className="flex-1" />
+        {plan === 'pro' ? (
+          <Badge tone="ok">Pro</Badge>
+        ) : (
+          plan === 'free' && (
+            <Button variant="ghost" icon={<Sparkles className="size-[17px]" />} title="Lihat apa yang ditambahkan Pro" onClick={() => go({ name: 'settings', tab: 'license', back: { name: 'home' } })}>
+              Upgrade ke Pro
+            </Button>
+          )
+        )}
         <Button icon={<SlidersHorizontal className="size-[18px]" />} onClick={() => go({ name: 'settings', back: { name: 'home' } })}>
           Pengaturan
           {setupIssues.length > 0 && <span className="size-2 rounded-full bg-accent" />}

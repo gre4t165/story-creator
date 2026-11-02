@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { replaceCaptionWords } from '@shared/captions'
 import { overlayEnd } from '@shared/overlays'
+import { layerDb, layerSource } from '@shared/relax'
 import { musicSpan } from '@shared/timeline'
 import { confirmDialog, cx } from '../../components/ui'
 import { clipNumber, errorText } from '../../lib/format'
@@ -14,6 +15,7 @@ import {
   usePlayback,
   usePlaybackEngine,
   useTimeline,
+  type AmbiencePlay,
   type TimelineItem
 } from './editor/engine'
 import { INSPECTOR_TABS, Inspector, type InspectorTab } from './editor/Inspector'
@@ -36,6 +38,15 @@ export function EditorStep() {
   const selectCaption = useCaptionUi((s) => s.select)
   const music = project?.editor.musicAssetId ? (assets[project.editor.musicAssetId] ?? null) : null
   const musicRange = project ? musicSpan(project.editor, total) : undefined
+  const relax = project?.editor.relax
+  const ambience = useMemo<AmbiencePlay[]>(() => {
+    if (!relax) return []
+    const list = Object.values(assets)
+    return relax.layers.flatMap((l) => {
+      const src = layerSource(l, list)
+      return src ? [{ key: `${l.id}|${src.url}`, url: src.url, db: layerDb(l, relax) }] : []
+    })
+  }, [relax, assets])
   usePlaybackEngine(
     items,
     total,
@@ -45,7 +56,8 @@ export function EditorStep() {
     project?.editor.voiceVolumeDb ?? 0,
     musicRange,
     project?.editor.sfx,
-    project?.editor.sfxVolumeDb ?? 0
+    project?.editor.sfxVolumeDb ?? 0,
+    ambience
   )
 
   // Keyboard actions use the latest handlers, which are set on every render below.
@@ -213,7 +225,7 @@ export function EditorStep() {
     <div className="grid h-full grid-cols-[minmax(0,1fr)]" style={{ gridTemplateRows: `minmax(0,1fr) min(${timelineHeight}px, 52vh)` }}>
       <div className="grid min-h-0 grid-cols-[84px_minmax(0,1fr)_360px]">
         <nav aria-label="Panel editor" className="scroll-thin flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-r border-line bg-surface py-2">
-          {INSPECTOR_TABS.map((t) => {
+          {INSPECTOR_TABS.filter((t) => t.id !== 'suasana' || relax).map((t) => {
             const Icon = t.icon
             const on = tab === t.id
             return (

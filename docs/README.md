@@ -13,6 +13,7 @@ Mulai dari [AGENTS.md](../AGENTS.md): ringkasan proyek, perintah, peta kode, dan
 | [alur-produksi.md](alur-produksi.md) | Ide → naskah → visual → gambar/video → narasi → caption, termasuk prompt AI |
 | [editor-dan-ekspor.md](editor-dan-ekspor.md) | Model timeline, pratinjau, transisi, gerak kamera, caption, dan susunan render FFmpeg |
 | [layanan-ai.md](layanan-ai.md) | LLM, TTS, Higgsfield, Whisper, kunci API, cara menambah penyedia/model |
+| [lisensi.md](lisensi.md) | Versi gratis dan Pro, kode aktivasi, server lisensi, cara menambah fitur Pro |
 | [pengembangan.md](pengembangan.md) | Setup, perintah, dev harness, cara menguji, debugging, build installer, rilis |
 | [konvensi.md](konvensi.md) | Gaya kode, bahasa, design token, komponen, aturan UI |
 | [keputusan-teknis.md](keputusan-teknis.md) | Kenapa sesuatu dibuat begitu (dan bug apa yang muncul kalau diubah) |

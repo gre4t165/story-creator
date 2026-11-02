@@ -25,6 +25,7 @@ import type {
   TtsProvider,
   VoiceOption
 } from './types'
+import type { LicenseFeature, LicenseState } from './license'
 
 /** The typed surface the preload script exposes as `window.api`. */
 export interface StudioApi {
@@ -92,6 +93,12 @@ export interface StudioApi {
     /** Rough beat times of a music asset in seconds, for cutting pictures on the music. */
     musicBeats(assetId: string): Promise<number[]>
   }
+  relax: {
+    /** A sound file of the user's own for an ambience layer. */
+    pickAmbience(projectId: string): Promise<Asset | null>
+    /** A seamless loop of up to 30 seconds made by ElevenLabs from a description. */
+    generateAmbience(projectId: string, description: string, seconds: number): Promise<Asset>
+  }
   imports: {
     /** A picture or a recorded voice from disk for one clip. False when the dialog was closed. */
     clipFile(clipId: string, kind: 'image' | 'audio'): Promise<boolean>
@@ -131,6 +138,17 @@ export interface StudioApi {
     defaultFolder(): Promise<string>
     pickFolder(): Promise<string | null>
     reveal(path: string): Promise<void>
+  }
+  license: {
+    get(): Promise<LicenseState>
+    /** Checks the code with the license server and switches this computer to Pro. */
+    activate(code: string): Promise<LicenseState>
+    /** Frees this computer's place on the code. */
+    deactivate(): Promise<LicenseState>
+    /** Asks the server again now (normally it happens by itself every 30 days). */
+    refresh(): Promise<LicenseState>
+    /** Throws the "Pro only" error when this feature is not available. */
+    require(feature: LicenseFeature): Promise<void>
   }
   app: {
     openExternal(url: string): Promise<void>

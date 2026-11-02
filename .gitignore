@@ -4,3 +4,8 @@ dist
 *.log
 .DS_Store
 .env
+
+# Server lisensi: kunci privat dan variabel rahasia tidak boleh masuk git
+license-server/private-key.pem
+license-server/.dev.vars
+license-server/.wrangler

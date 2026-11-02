@@ -3,7 +3,8 @@ import type { Clip, SfxItem } from './types'
 
 /**
  * The built-in sound effect library and the rules for placing and playing it. Every file is CC0: Kenney's
- * packs (impact, rpg, interface, scifi) and sounds synthesized for the app (generated). The preview and the
+ * packs (impact, rpg, interface, scifi), ambience recordings from Freesound (ambience) and sounds synthesized for
+ * the app (generated, and the noises in ambience). The preview and the
  * export both play an item through sfxPlay, so they sound the same.
  */
 
@@ -57,28 +58,10 @@ const META: Record<string, Meta> = {
   },
   'generated/heartbeat': { label: 'Detak jantung', category: 'tubuh', role: 'spot', loop: true, tags: ['jantung', 'berdebar', 'deg-degan', 'ketakutan', 'heartbeat'] },
   'generated/clock': { label: 'Detak jam', category: 'benda', role: 'spot', loop: true, tags: ['jam dinding', 'detik', 'menunggu', 'waktu habis', 'clock', 'ticking'] },
-  'generated/rain': { label: 'Hujan', category: 'suasana', role: 'ambience', loop: true, tags: ['hujan', 'gerimis', 'badai', 'petir', 'rain', 'storm'] },
-  'generated/wind': {
-    label: 'Angin',
-    category: 'suasana',
-    role: 'ambience',
-    loop: true,
-    tags: ['angin', 'gurun', 'padang pasir', 'gunung', 'puncak', 'tebing', 'bersalju', 'wind', 'desert', 'mountain']
-  },
-  'generated/ocean': {
-    label: 'Ombak laut',
-    category: 'suasana',
-    role: 'ambience',
-    loop: true,
-    tags: ['laut', 'pantai', 'ombak', 'samudra', 'samudera', 'kapal', 'pelabuhan', 'berlayar', 'sea', 'ocean', 'beach', 'ship']
-  },
-  'generated/night': {
-    label: 'Malam (jangkrik)',
-    category: 'suasana',
-    role: 'ambience',
-    loop: true,
-    tags: ['malam', 'jangkrik', 'hutan', 'desa', 'kampung', 'sawah', 'tengah malam', 'night', 'forest', 'village']
-  },
+  'generated/rain': { label: 'Hujan (sintetis)', category: 'suasana', role: 'ambience', loop: true },
+  'generated/wind': { label: 'Angin (sintetis)', category: 'suasana', role: 'ambience', loop: true },
+  'generated/ocean': { label: 'Ombak (sintetis)', category: 'suasana', role: 'ambience', loop: true },
+  'generated/night': { label: 'Malam (sintetis)', category: 'suasana', role: 'ambience', loop: true },
   'generated/roomtone': {
     label: 'Suasana ruangan',
     category: 'suasana',
@@ -86,6 +69,25 @@ const META: Record<string, Meta> = {
     loop: true,
     tags: ['ruangan', 'kamar', 'istana', 'aula', 'balairung', 'kantor', 'keraton', 'room', 'palace', 'hall', 'office']
   },
+
+  // Real CC0 recordings from Freesound (credits in resources/licenses/Freesound-ambience-CC0.txt), cut into
+  // seamless loops by scripts/ambience-pack.cjs, plus noise generated for the app.
+  'ambience/rain-roof': { label: 'Hujan di atap', category: 'suasana', role: 'ambience', loop: true, tags: ['hujan', 'gerimis', 'rain'] },
+  'ambience/rain-tent': { label: 'Hujan di tenda', category: 'suasana', role: 'ambience', loop: true, tags: ['tenda', 'berkemah', 'tent', 'camping'] },
+  'ambience/rain-night': { label: 'Hujan malam', category: 'suasana', role: 'ambience', loop: true },
+  'ambience/thunderstorm': { label: 'Hujan dan petir', category: 'suasana', role: 'ambience', loop: true, tags: ['badai', 'petir', 'guntur', 'halilintar', 'storm', 'thunder'] },
+  'ambience/ocean': { label: 'Ombak pantai', category: 'suasana', role: 'ambience', loop: true, tags: ['laut', 'pantai', 'ombak', 'samudra', 'samudera', 'sea', 'ocean', 'beach'] },
+  'ambience/river': { label: 'Sungai mengalir', category: 'suasana', role: 'ambience', loop: true, tags: ['sungai', 'kali', 'air terjun', 'mata air', 'river', 'stream', 'waterfall'] },
+  'ambience/fireplace': { label: 'Perapian', category: 'suasana', role: 'ambience', loop: true, tags: ['perapian', 'tungku', 'fireplace', 'hearth'] },
+  'ambience/campfire': { label: 'Api unggun', category: 'suasana', role: 'ambience', loop: true, tags: ['api unggun', 'campfire', 'bonfire'] },
+  'ambience/forest': { label: 'Hutan pagi', category: 'suasana', role: 'ambience', loop: true, tags: ['hutan', 'burung', 'pagi hari', 'taman', 'forest', 'birds', 'morning'] },
+  'ambience/crickets': { label: 'Jangkrik malam', category: 'suasana', role: 'ambience', loop: true, tags: ['malam', 'jangkrik', 'desa', 'kampung', 'sawah', 'tengah malam', 'night', 'village', 'crickets'] },
+  'ambience/wind': { label: 'Angin', category: 'suasana', role: 'ambience', loop: true, tags: ['angin', 'gurun', 'padang pasir', 'gunung', 'puncak', 'tebing', 'bersalju', 'wind', 'desert', 'mountain'] },
+  'ambience/cafe': { label: 'Kafe', category: 'suasana', role: 'ambience', loop: true, tags: ['kafe', 'kedai kopi', 'warung', 'restoran', 'cafe', 'coffee shop', 'restaurant'] },
+  'ambience/fan': { label: 'Kipas angin', category: 'suasana', role: 'ambience', loop: true },
+  'ambience/whitenoise': { label: 'White noise', category: 'suasana', role: 'ambience', loop: true },
+  'ambience/pinknoise': { label: 'Pink noise', category: 'suasana', role: 'ambience', loop: true },
+  'ambience/brownnoise': { label: 'Brown noise', category: 'suasana', role: 'ambience', loop: true },
 
   'impact/footstep_concrete': step('Langkah di batu', ['jalan', 'kota', 'batu', 'lorong', 'jalanan']),
   'impact/footstep_grass': step('Langkah di rumput', ['rumput', 'taman', 'hutan', 'ladang']),
@@ -156,7 +158,7 @@ const META: Record<string, Meta> = {
   'scifi/impactMetal': { label: 'Logam sci-fi', category: 'scifi', role: 'spot' }
 }
 
-const PACK_CATEGORY: Record<string, SfxCategory> = { impact: 'benda', rpg: 'benda', interface: 'antarmuka', scifi: 'scifi', generated: 'hentakan' }
+const PACK_CATEGORY: Record<string, SfxCategory> = { ambience: 'suasana', impact: 'benda', rpg: 'benda', interface: 'antarmuka', scifi: 'scifi', generated: 'hentakan' }
 
 /** "impactGlass_heavy" → "impact glass heavy", for sounds without a label of their own. */
 const plainLabel = (id: string): string =>

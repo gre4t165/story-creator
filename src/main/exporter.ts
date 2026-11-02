@@ -19,10 +19,13 @@ import {
 } from '@shared/captions'
 import { cameraPerspective, TRANSITIONS, transitionSecOf } from '@shared/motion'
 import { clipCaptionWords, musicSpan, voiceSpan } from '@shared/timeline'
+import { FREE_LIMITS, WATERMARK_TEXT } from '@shared/license'
 import { anchorOffset, contrastColor, overlayEnd, textEffects } from '@shared/overlays'
+import { DIM_FADE_SEC, LAYER_FADE_IN_SEC, LOOP_FADE_SEC, layerDb, layerSource, relaxLengthSec } from '@shared/relax'
 import { sfxPlay } from '@shared/sfx'
-import type { Asset, Clip, ExportOptions, ImageOverlay, Job, ProjectBundle, TextOverlay } from '@shared/types'
+import type { Asset, Clip, ExportOptions, ImageOverlay, Job, ProjectBundle, RelaxSettings, TextOverlay } from '@shared/types'
 import { emit } from './events'
+import { isPro } from './license'
 import { runJob, type TaskCtx } from './jobs'
 import { fontMeasure } from './fontMetrics'
 import { assetAbsPath, binPath, dataDir, fontsDir, sfxDir } from './paths'
@@ -380,6 +383,234 @@ async function renderSegment(
   return out
 }
 
+/** Renders every clip's silent segment, two at a time, reporting progress between `from` and `to`. */
+async function renderSegments(
+  ctx: TaskCtx,
+  bundle: ProjectBundle,
+  segs: Segment[],
+  opts: ExportOptions,
+  size: { w: number; h: number },
+  tmp: string,
+  span: [number, number]
+): Promise<string[]> {
+  const files: string[] = new Array(segs.length)
+  let done = 0
+  let next = 0
+  const worker = async (): Promise<void> => {
+    while (next < segs.length) {
+      const i = next++
+      files[i] = await renderSegment(bundle, segs[i], i, opts, size, tmp, ctx.signal)
+      done++
+      ctx.progress(span[0] + (span[1] - span[0]) * (done / segs.length), `Merender klip ${done} dari ${segs.length}`)
+    }
+  }
+  await Promise.all([worker(), worker()])
+  return files
+}
+
+/** Text overlays to burn, with the free version's watermark on top; `total` is how long the picture runs. */
+function overlayTexts(bundle: ProjectBundle, total: number): TextOverlay[] {
+  const overlays = bundle.project.editor.overlays ?? []
+  const texts = overlays.filter((o): o is TextOverlay => o.kind === 'text' && !!o.text.trim() && o.start < total)
+  // The free version signs every video in the bottom right corner, on top of everything else.
+  if (!isPro()) {
+    texts.push({ id: 'watermark', kind: 'text', text: WATERMARK_TEXT, anchor: 3, x: 0.975, y: 0.965, start: 0, end: null, size: 0.034, color: '#FFFFFF', style: 'outline', bold: true })
+  }
+  return texts
+}
+
+function overlayImages(bundle: ProjectBundle, total: number): { o: ImageOverlay; asset: Asset }[] {
+  return (bundle.project.editor.overlays ?? [])
+    .filter((o): o is ImageOverlay => o.kind === 'image' && o.start < total)
+    .map((o) => ({ o, asset: assetOf(bundle, o.assetId) }))
+    .filter((x): x is { o: ImageOverlay; asset: Asset } => !!x.asset && existsSync(assetAbsPath(bundle.project.id, x.asset.localPath)))
+}
+
+function writeAss(tmp: string, captions: CaptionTrack | null, texts: TextOverlay[], total: number, size: { w: number; h: number }): void {
+  writeFileSync(join(tmp, 'captions.ass'), buildAss(captions, texts, total, size.w, size.h), 'utf8')
+  mkdirSync(join(tmp, 'fonts'), { recursive: true })
+  for (const f of readdirSync(fontsDir()).filter((x) => x.endsWith('.ttf'))) copyFileSync(join(fontsDir(), f), join(tmp, 'fonts', f))
+}
+
+/**
+ * The picture filter graph: segment inputs 0..n-1 joined by their transitions, then logos and the subtitle file.
+ * Image overlays are added as inputs to `args` after the segments. Ends in the label [vpic].
+ */
+function pictureGraph(
+  bundle: ProjectBundle,
+  segs: Segment[],
+  args: string[],
+  graph: string[],
+  images: { o: ImageOverlay; asset: Asset }[],
+  useAss: boolean,
+  size: { w: number; h: number },
+  total: number
+): void {
+  let v = '[0:v]'
+  segs.slice(0, -1).forEach((s, i) => {
+    const label = `[x${i}]`
+    graph.push(`${v}[${i + 1}:v]xfade=transition=${s.transition}:duration=${s.overlap.toFixed(6)}:offset=${segs[i + 1].start.toFixed(6)}${label}`)
+    v = label
+  })
+  // Logos and watermarks sit on the picture, under captions and overlay text.
+  images.forEach(({ o, asset }, k) => {
+    args.push('-i', assetAbsPath(bundle.project.id, asset.localPath))
+    const iw = Math.max(2, Math.round((o.width * size.w) / 2) * 2)
+    const ih = Math.max(2, Math.round((iw * (asset.height || iw)) / (asset.width || iw) / 2) * 2)
+    const { ax, ay } = anchorOffset(o.anchor)
+    const x = Math.round(o.x * size.w - ax * iw)
+    const y = Math.round(o.y * size.h - ay * ih)
+    const end = overlayEnd(o, total)
+    graph.push(`[${segs.length + k}:v]format=rgba,scale=${iw}:${ih},colorchannelmixer=aa=${o.opacity.toFixed(2)}[ov${k}]`)
+    graph.push(`${v}[ov${k}]overlay=x=${x}:y=${y}:enable='between(t,${o.start.toFixed(3)},${end.toFixed(3)})'[vo${k}]`)
+    v = `[vo${k}]`
+  })
+  graph.push(`${v}${useAss ? 'ass=captions.ass:fontsdir=fonts,' : ''}format=yuv420p[vpic]`)
+}
+
+interface AudioLength {
+  /** Length of the story timeline (clips), where narration, effects and the music range live. */
+  timeline: number
+  /** Length of the finished audio: the same as the timeline, or the full length of a looping relax video. */
+  out: number
+}
+
+/**
+ * The sound mix as filter lines, with its inputs added to `args` from input number `first`: narration, effects,
+ * music (ducked under the voice if asked) and, in a relax video, the ambience layers. Ends in the label [aout].
+ */
+function audioGraph(bundle: ProjectBundle, segs: Segment[], len: AudioLength, opts: ExportOptions, args: string[], graph: string[], first: number): void {
+  const projectId = bundle.project.id
+  const editor = bundle.project.editor
+  const relax = editor.relax
+  const total = len.timeline
+  let inputIndex = first
+  const voices: string[] = []
+  segs.forEach((s, i) => {
+    const audio = assetOf(bundle, s.clip.audioAssetId)
+    if (!audio) return
+    // The voice as trimmed on the timeline, placed in its clip, and cut (with a short fade) at the clip's end.
+    const span = voiceSpan(s.clip, audio.durationMs ?? UNKNOWN_AUDIO_MS)
+    if (span.playMs <= 0) return
+    args.push('-i', assetAbsPath(projectId, audio.localPath))
+    const ms = Math.round(s.start * 1000 + span.startMs)
+    const cut = span.playMs < span.lengthMs ? `,afade=t=out:st=${Math.max(0, span.playMs / 1000 - 0.06).toFixed(3)}:d=0.06` : ''
+    // Narration volume: for all clips plus this clip's own adjustment.
+    const db = (editor.voiceVolumeDb ?? 0) + (s.clip.voiceGainDb ?? 0)
+    const gain = Math.abs(db) > 0.01 ? `volume=${db.toFixed(2)}dB,` : ''
+    graph.push(
+      `[${inputIndex}:a]atrim=start=${(span.inMs / 1000).toFixed(3)}:end=${((span.inMs + span.playMs) / 1000).toFixed(3)},asetpts=PTS-STARTPTS${cut},aresample=48000,aformat=channel_layouts=stereo,${gain}adelay=${ms}|${ms}[a${i}]`
+    )
+    voices.push(`[a${i}]`)
+    inputIndex++
+  })
+  // Sound effects from the library: looping ones repeat to fill their length, ambiences fade in and out.
+  const sfxLabels: string[] = []
+  const sfxDb = editor.sfxVolumeDb ?? 0
+  for (const item of editor.sfx ?? []) {
+    const file = join(sfxDir(), item.file)
+    if (!existsSync(file) || item.start >= total) continue
+    const play = sfxPlay(item, total)
+    if (play.loop) args.push('-stream_loop', '-1')
+    args.push('-i', file)
+    const ms = Math.round(play.startSec * 1000)
+    const fades = play.fadeSec
+      ? `,afade=t=in:d=${play.fadeSec.toFixed(3)},afade=t=out:st=${(play.playSec - play.fadeSec).toFixed(3)}:d=${play.fadeSec.toFixed(3)}`
+      : ''
+    const label = `[s${sfxLabels.length}]`
+    graph.push(
+      `[${inputIndex}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${play.playSec.toFixed(3)},asetpts=PTS-STARTPTS,volume=${(item.volumeDb + sfxDb).toFixed(2)}dB${fades},adelay=${ms}|${ms}${label}`
+    )
+    sfxLabels.push(label)
+    inputIndex++
+  }
+  // Ambience layers loop under everything for the whole video, as the preview plays them.
+  if (relax) {
+    for (const layer of relax.layers) {
+      const src = layerSource(layer, bundle.assets)
+      const file = src?.file ? join(sfxDir(), src.file) : src?.asset ? assetAbsPath(projectId, src.asset.localPath) : null
+      if (!file || !existsSync(file)) continue
+      args.push('-stream_loop', '-1', '-i', file)
+      const label = `[s${sfxLabels.length}]`
+      graph.push(
+        `[${inputIndex}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${len.out.toFixed(3)},asetpts=PTS-STARTPTS,volume=${layerDb(layer, relax).toFixed(2)}dB,afade=t=in:d=${LAYER_FADE_IN_SEC}${label}`
+      )
+      sfxLabels.push(label)
+      inputIndex++
+    }
+  }
+
+  const music = assetOf(bundle, editor.musicAssetId)
+  let aout: string | null = null
+  if (voices.length) {
+    graph.push(`${voices.join('')}amix=inputs=${voices.length}:normalize=0:dropout_transition=0[voice]`)
+    aout = '[voice]'
+  }
+  if (music) {
+    // The music's stretch of the timeline: it starts `inSec` into the song, loops if needed and fades out.
+    // In a relax video music left to run to the end keeps looping for the whole length.
+    const span = musicSpan(editor, relax && editor.musicEndMs == null ? len.out : total)
+    const mlen = span.endSec - span.startSec
+    const delay = Math.round(span.startSec * 1000)
+    args.push('-stream_loop', '-1', '-i', assetAbsPath(projectId, music.localPath))
+    graph.push(
+      `[${inputIndex}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=start=${span.inSec.toFixed(3)},asetpts=PTS-STARTPTS,atrim=0:${mlen.toFixed(3)},volume=${editor.musicVolumeDb}dB,afade=t=out:st=${Math.max(0, mlen - 2).toFixed(3)}:d=${Math.min(2, mlen).toFixed(3)}${delay ? `,adelay=${delay}|${delay}` : ''}[mus]`
+    )
+    inputIndex++
+    if (aout) {
+      if (opts.duckMusic) {
+        graph.push('[voice]asplit=2[v1][v2]')
+        graph.push('[mus][v2]sidechaincompress=threshold=0.02:ratio=8:attack=20:release=500[duck]')
+        graph.push('[v1][duck]amix=inputs=2:normalize=0:dropout_transition=0[mix]')
+      } else {
+        graph.push('[voice][mus]amix=inputs=2:normalize=0:dropout_transition=0[mix]')
+      }
+      aout = '[mix]'
+    } else aout = '[mus]'
+  }
+  if (sfxLabels.length) {
+    // Effects and ambience join after the music ducking, so narration never pushes them down.
+    graph.push(`${sfxLabels.join('')}amix=inputs=${sfxLabels.length}:normalize=0:dropout_transition=0[sfx]`)
+    if (aout) {
+      graph.push(`${aout}[sfx]amix=inputs=2:normalize=0:dropout_transition=0[withsfx]`)
+      aout = '[withsfx]'
+    } else aout = '[sfx]'
+  }
+  const end = len.out.toFixed(3)
+  if (aout && relax) {
+    // Hours of audio are too long for loudnorm; a soft limiter only keeps stacked layers from clipping.
+    const fade = Math.min(relax.fadeOutSec, len.out)
+    const fadeOut = fade > 0 ? `afade=t=out:st=${(len.out - fade).toFixed(3)}:d=${fade.toFixed(3)},` : ''
+    graph.push(`${aout}apad,atrim=0:${end},${fadeOut}alimiter=limit=0.89:level=false,aresample=48000[aout]`)
+  } else if (aout) {
+    // loudnorm works at 192 kHz internally, so resample back to 48 kHz afterwards.
+    graph.push(`${aout}${opts.normalizeAudio ? 'loudnorm=I=-14:LRA=11:TP=-1.5,' : ''}aresample=48000,apad,atrim=0:${end}[aout]`)
+  } else {
+    graph.push(`anullsrc=r=48000:cl=stereo,atrim=0:${end}[aout]`)
+  }
+}
+
+/** A free file name in the export folder: "name.mp4", or "name-2.mp4" when that exists. */
+function outputPath(opts: ExportOptions): string {
+  mkdirSync(opts.folder, { recursive: true })
+  const base = (opts.fileName.trim() || 'video').replace(/[<>:"/\\|?*]+/g, '-').replace(/\.mp4$/i, '')
+  let outPath = join(opts.folder, `${base}.mp4`)
+  for (let n = 2; existsSync(outPath); n++) outPath = join(opts.folder, `${base}-${n}.mp4`)
+  return outPath
+}
+
+/** Caption chunks on the story timeline, from each clip's voice as trimmed and placed. */
+function captionChunks(bundle: ProjectBundle, segs: Segment[]): CaptionChunk[] {
+  return timelineChunks(
+    segs.map((s) => {
+      const audio = assetOf(bundle, s.clip.audioAssetId)
+      if (!audio) return { start: s.start, words: [] }
+      const shown = clipCaptionWords(s.clip, audio.meta.words ?? [], audio.durationMs ?? UNKNOWN_AUDIO_MS)
+      return { start: s.start, words: shown.words, key: audio.id, offset: shown.offset }
+    })
+  )
+}
+
 async function renderProject(ctx: TaskCtx, projectId: string, opts: ExportOptions): Promise<string> {
   const bundle = getBundle(projectId)
   if (!bundle.clips.length) throw new Error('Proyek belum punya klip')
@@ -387,172 +618,36 @@ async function renderProject(ctx: TaskCtx, projectId: string, opts: ExportOption
   const tmp = join(dataDir(), 'tmp', `export-${ctx.jobId}`)
   mkdirSync(tmp, { recursive: true })
   try {
+    if (bundle.project.editor.relax) return await renderRelax(ctx, bundle, bundle.project.editor.relax, opts, size, tmp)
     const segs = planSegments(bundle.clips, opts.fps)
     const total = segs.reduce((n, s) => n + s.own, 0)
 
-    // 1. one silent video segment per clip, two at a time
-    const files: string[] = new Array(segs.length)
-    let done = 0
-    let next = 0
-    const worker = async (): Promise<void> => {
-      while (next < segs.length) {
-        const i = next++
-        files[i] = await renderSegment(bundle, segs[i], i, opts, size, tmp, ctx.signal)
-        done++
-        ctx.progress(0.03 + 0.6 * (done / segs.length), `Merender klip ${done} dari ${segs.length}`)
-      }
-    }
-    await Promise.all([worker(), worker()])
+    // 1. one silent video segment per clip
+    const files = await renderSegments(ctx, bundle, segs, opts, size, tmp, [0.03, 0.63])
 
-    // 2. captions
+    // 2. captions and overlays
     const style = resolveCaption(bundle.project.editor)
-    // Captions follow each clip's voice as trimmed and placed on the timeline.
-    const chunks = timelineChunks(
-      segs.map((s) => {
-        const audio = assetOf(bundle, s.clip.audioAssetId)
-        if (!audio) return { start: s.start, words: [] }
-        const shown = clipCaptionWords(s.clip, audio.meta.words ?? [], audio.durationMs ?? UNKNOWN_AUDIO_MS)
-        return { start: s.start, words: shown.words, key: audio.id, offset: shown.offset }
-      })
-    )
+    const chunks = captionChunks(bundle, segs)
     const burn = opts.burnCaptions && !!style && chunks.length > 0
     // Overlays are part of the picture, so they are drawn even when captions are left out.
-    const overlays = bundle.project.editor.overlays ?? []
-    const texts = overlays.filter((o): o is TextOverlay => o.kind === 'text' && !!o.text.trim() && o.start < total)
-    const images = overlays
-      .filter((o): o is ImageOverlay => o.kind === 'image' && o.start < total)
-      .map((o) => ({ o, asset: assetOf(bundle, o.assetId) }))
-      .filter((x): x is { o: ImageOverlay; asset: Asset } => !!x.asset && existsSync(assetAbsPath(projectId, x.asset.localPath)))
+    const texts = overlayTexts(bundle, total)
+    const images = overlayImages(bundle, total)
     const useAss = burn || texts.length > 0
     if (useAss) {
-      const captions = burn
-        ? {
-            chunks,
-            style: style!,
-            pos: bundle.project.editor.captionPosition,
-            sizeScale: captionScaleOf(bundle.project.editor)
-          }
-        : null
-      writeFileSync(join(tmp, 'captions.ass'), buildAss(captions, texts, total, size.w, size.h), 'utf8')
-      mkdirSync(join(tmp, 'fonts'), { recursive: true })
-      for (const f of readdirSync(fontsDir()).filter((x) => x.endsWith('.ttf'))) copyFileSync(join(fontsDir(), f), join(tmp, 'fonts', f))
+      const captions = burn ? { chunks, style: style!, pos: bundle.project.editor.captionPosition, sizeScale: captionScaleOf(bundle.project.editor) } : null
+      writeAss(tmp, captions, texts, total, size)
     }
 
     // 3. one ffmpeg pass: transitions + captions + audio mix
     const args: string[] = []
     files.forEach((f) => args.push('-i', f))
     const graph: string[] = []
-    let v = '[0:v]'
-    segs.slice(0, -1).forEach((s, i) => {
-      const label = `[x${i}]`
-      graph.push(`${v}[${i + 1}:v]xfade=transition=${s.transition}:duration=${s.overlap.toFixed(6)}:offset=${segs[i + 1].start.toFixed(6)}${label}`)
-      v = label
-    })
-    // Logos and watermarks sit on the picture, under captions and overlay text.
-    images.forEach(({ o, asset }, k) => {
-      args.push('-i', assetAbsPath(projectId, asset.localPath))
-      const iw = Math.max(2, Math.round((o.width * size.w) / 2) * 2)
-      const ih = Math.max(2, Math.round((iw * (asset.height || iw)) / (asset.width || iw) / 2) * 2)
-      const { ax, ay } = anchorOffset(o.anchor)
-      const x = Math.round(o.x * size.w - ax * iw)
-      const y = Math.round(o.y * size.h - ay * ih)
-      const end = overlayEnd(o, total)
-      graph.push(`[${files.length + k}:v]format=rgba,scale=${iw}:${ih},colorchannelmixer=aa=${o.opacity.toFixed(2)}[ov${k}]`)
-      graph.push(`${v}[ov${k}]overlay=x=${x}:y=${y}:enable='between(t,${o.start.toFixed(3)},${end.toFixed(3)})'[vo${k}]`)
-      v = `[vo${k}]`
-    })
-    graph.push(`${v}${useAss ? 'ass=captions.ass:fontsdir=fonts,' : ''}format=yuv420p[vout]`)
-
-    let inputIndex = files.length + images.length
-    const voices: string[] = []
-    segs.forEach((s, i) => {
-      const audio = assetOf(bundle, s.clip.audioAssetId)
-      if (!audio) return
-      // The voice as trimmed on the timeline, placed in its clip, and cut (with a short fade) at the clip's end.
-      const span = voiceSpan(s.clip, audio.durationMs ?? UNKNOWN_AUDIO_MS)
-      if (span.playMs <= 0) return
-      args.push('-i', assetAbsPath(projectId, audio.localPath))
-      const ms = Math.round(s.start * 1000 + span.startMs)
-      const cut = span.playMs < span.lengthMs ? `,afade=t=out:st=${Math.max(0, span.playMs / 1000 - 0.06).toFixed(3)}:d=0.06` : ''
-      // Narration volume: for all clips plus this clip's own adjustment.
-      const db = (bundle.project.editor.voiceVolumeDb ?? 0) + (s.clip.voiceGainDb ?? 0)
-      const gain = Math.abs(db) > 0.01 ? `volume=${db.toFixed(2)}dB,` : ''
-      graph.push(
-        `[${inputIndex}:a]atrim=start=${(span.inMs / 1000).toFixed(3)}:end=${((span.inMs + span.playMs) / 1000).toFixed(3)},asetpts=PTS-STARTPTS${cut},aresample=48000,aformat=channel_layouts=stereo,${gain}adelay=${ms}|${ms}[a${i}]`
-      )
-      voices.push(`[a${i}]`)
-      inputIndex++
-    })
-    // Sound effects from the library: looping ones repeat to fill their length, ambiences fade in and out.
-    const sfxLabels: string[] = []
-    const sfxDb = bundle.project.editor.sfxVolumeDb ?? 0
-    for (const item of bundle.project.editor.sfx ?? []) {
-      const file = join(sfxDir(), item.file)
-      if (!existsSync(file) || item.start >= total) continue
-      const play = sfxPlay(item, total)
-      if (play.loop) args.push('-stream_loop', '-1')
-      args.push('-i', file)
-      const ms = Math.round(play.startSec * 1000)
-      const fades = play.fadeSec
-        ? `,afade=t=in:d=${play.fadeSec.toFixed(3)},afade=t=out:st=${(play.playSec - play.fadeSec).toFixed(3)}:d=${play.fadeSec.toFixed(3)}`
-        : ''
-      const label = `[s${sfxLabels.length}]`
-      graph.push(
-        `[${inputIndex}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${play.playSec.toFixed(3)},asetpts=PTS-STARTPTS,volume=${(item.volumeDb + sfxDb).toFixed(2)}dB${fades},adelay=${ms}|${ms}${label}`
-      )
-      sfxLabels.push(label)
-      inputIndex++
-    }
-
-    const music = assetOf(bundle, bundle.project.editor.musicAssetId)
-    let aout: string | null = null
-    if (voices.length) {
-      graph.push(`${voices.join('')}amix=inputs=${voices.length}:normalize=0:dropout_transition=0[voice]`)
-      aout = '[voice]'
-    }
-    if (music) {
-      // The music's stretch of the timeline: it starts `inSec` into the song, loops if needed and fades out.
-      const span = musicSpan(bundle.project.editor, total)
-      const len = span.endSec - span.startSec
-      const delay = Math.round(span.startSec * 1000)
-      args.push('-stream_loop', '-1', '-i', assetAbsPath(projectId, music.localPath))
-      graph.push(
-        `[${inputIndex}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=start=${span.inSec.toFixed(3)},asetpts=PTS-STARTPTS,atrim=0:${len.toFixed(3)},volume=${bundle.project.editor.musicVolumeDb}dB,afade=t=out:st=${Math.max(0, len - 2).toFixed(3)}:d=${Math.min(2, len).toFixed(3)}${delay ? `,adelay=${delay}|${delay}` : ''}[mus]`
-      )
-      inputIndex++
-      if (aout) {
-        if (opts.duckMusic) {
-          graph.push('[voice]asplit=2[v1][v2]')
-          graph.push('[mus][v2]sidechaincompress=threshold=0.02:ratio=8:attack=20:release=500[duck]')
-          graph.push('[v1][duck]amix=inputs=2:normalize=0:dropout_transition=0[mix]')
-        } else {
-          graph.push('[voice][mus]amix=inputs=2:normalize=0:dropout_transition=0[mix]')
-        }
-        aout = '[mix]'
-      } else aout = '[mus]'
-    }
-    if (sfxLabels.length) {
-      // Effects join after the music ducking, so narration never pushes them down.
-      graph.push(`${sfxLabels.join('')}amix=inputs=${sfxLabels.length}:normalize=0:dropout_transition=0[sfx]`)
-      if (aout) {
-        graph.push(`${aout}[sfx]amix=inputs=2:normalize=0:dropout_transition=0[withsfx]`)
-        aout = '[withsfx]'
-      } else aout = '[sfx]'
-    }
-    if (aout) {
-      // loudnorm works at 192 kHz internally, so resample back to 48 kHz afterwards.
-      graph.push(`${aout}${opts.normalizeAudio ? 'loudnorm=I=-14:LRA=11:TP=-1.5,' : ''}aresample=48000,apad,atrim=0:${total.toFixed(3)}[aout]`)
-    } else {
-      graph.push(`anullsrc=r=48000:cl=stereo,atrim=0:${total.toFixed(3)}[aout]`)
-    }
+    pictureGraph(bundle, segs, args, graph, images, useAss, size, total)
+    graph.push('[vpic]null[vout]')
+    audioGraph(bundle, segs, { timeline: total, out: total }, opts, args, graph, files.length + images.length)
     writeFileSync(join(tmp, 'graph.txt'), graph.join(';\n'), 'utf8')
 
-    const folder = opts.folder
-    mkdirSync(folder, { recursive: true })
-    const base = (opts.fileName.trim() || 'video').replace(/[<>:"/\\|?*]+/g, '-').replace(/\.mp4$/i, '')
-    let outPath = join(folder, `${base}.mp4`)
-    for (let n = 2; existsSync(outPath); n++) outPath = join(folder, `${base}-${n}.mp4`)
-
+    const outPath = outputPath(opts)
     ctx.progress(0.64, 'Menggabungkan klip, suara, dan caption')
     await runFfmpeg(
       [
@@ -595,7 +690,163 @@ async function renderProject(ctx: TaskCtx, projectId: string, opts: ExportOption
   }
 }
 
-export function startExport(projectId: string, opts: ExportOptions): Job {
+// ---------- long relax videos ----------
+
+/**
+ * Encoder settings shared by every piece of a looping video, so the pieces can be joined without re-encoding.
+ * Slow pictures and long files: a higher CRF than a story video, which barely shows on calm footage.
+ */
+function pieceEncoder(opts: ExportOptions): string[] {
+  const crf = opts.resolution === 2160 ? '24' : opts.resolution === 1080 ? '23' : '22'
+  return ['-c:v', 'libx264', '-preset', 'medium', '-profile:v', 'high', '-crf', crf, '-pix_fmt', 'yuv420p', '-r', String(opts.fps), '-g', String(opts.fps * 4), '-an', '-f', 'mpegts']
+}
+
+/**
+ * A sleep, meditation or ambience video of up to ten hours, without rendering every hour. The story's picture is
+ * rendered once with its last scene fading into the first; that rendered loop is then repeated by copying, the
+ * screen optionally fades to black, and one long audio track (narration once, ambience and music looping) is
+ * laid over it:
+ *
+ *   head (first frames) | loop | loop | … | [fade to black | black …] | tail (fades out)
+ *
+ * The loop starts a few frames into the first scene, exactly where the fade from the last scene ends, so the
+ * joins between loops are invisible.
+ */
+async function renderRelax(ctx: TaskCtx, bundle: ProjectBundle, relax: RelaxSettings, opts: ExportOptions, size: { w: number; h: number }, tmp: string): Promise<string> {
+  const fps = opts.fps
+  const clips = bundle.clips
+  const storySec = planSegments(clips, fps).reduce((n, s) => n + s.own, 0)
+  const length = relaxLengthSec(relax, storySec, isPro())
+  const loops = length > storySec + 0.5
+  // For a loop, the last scene fades into a second copy of the first scene.
+  const planned = loops
+    ? [...clips.slice(0, -1), { ...clips[clips.length - 1], transition: 'fade' as const, transitionMs: LOOP_FADE_SEC * 1000 }, clips[0]]
+    : clips
+  const segs = planSegments(planned, fps)
+  const real = loops ? segs.slice(0, -1) : segs
+  const rendered = await renderSegments(ctx, bundle, real, opts, size, tmp, [0.02, 0.35])
+  // The copy of the first scene is the same footage, so its file is used again.
+  const files = loops ? [...rendered, rendered[0]] : rendered
+
+  const loopF = Math.round((loops ? segs[segs.length - 1].start : storySec) * fps)
+  const headF = loops ? Math.round(segs[segs.length - 2].overlap * fps) : 0
+  const pictureSec = (loopF + headF) / fps
+  const texts = overlayTexts(bundle, pictureSec)
+  const images = overlayImages(bundle, pictureSec)
+  if (texts.length) writeAss(tmp, null, texts, pictureSec, size)
+
+  // 1. the picture: head and loop as two files from one pass
+  const enc = pieceEncoder(opts)
+  const args: string[] = []
+  files.forEach((f) => args.push('-i', f))
+  const graph: string[] = []
+  pictureGraph(bundle, segs, args, graph, images, texts.length > 0, size, pictureSec)
+  if (loops) {
+    graph.push('[vpic]split=2[ph][pl]')
+    graph.push(`[ph]trim=end_frame=${headF},setpts=PTS-STARTPTS[head]`)
+    graph.push(`[pl]trim=start_frame=${headF}:end_frame=${headF + loopF},setpts=PTS-STARTPTS[loop]`)
+  } else {
+    // No loop: the story is the whole video, so the end fade is drawn right here.
+    const fade = Math.min(relax.fadeOutSec, storySec)
+    graph.push(`[vpic]trim=end_frame=${loopF},setpts=PTS-STARTPTS${fade > 0 ? `,fade=t=out:st=${(storySec - fade).toFixed(3)}:d=${fade.toFixed(3)}` : ''}[loop]`)
+  }
+  writeFileSync(join(tmp, 'picture.txt'), graph.join(';\n'), 'utf8')
+  ctx.progress(0.36, 'Merender gambar yang diulang')
+  await runFfmpeg(
+    [...args, '-filter_complex_script', 'picture.txt', ...(loops ? ['-map', '[head]', ...enc, 'head.ts'] : []), '-map', '[loop]', ...enc, 'loop.ts'],
+    tmp,
+    ctx.signal,
+    pictureSec,
+    (f) => ctx.progress(0.36 + 0.2 * f, 'Merender gambar yang diulang')
+  )
+
+  // 2. the order of pieces, and the few short pieces that need their own encode
+  const list: string[] = []
+  if (loops) {
+    const loopSec = loopF / fps
+    const fadeOut = Math.min(relax.fadeOutSec, length)
+    const dimAt = relax.dimAfterSec != null && relax.dimAfterSec < length ? relax.dimAfterSec : null
+    let at = headF / fps
+    list.push('head.ts')
+    // Whole loops while there is room for them and the tail; the screen darkens at the first join after dimAt.
+    while (at + loopSec + Math.max(1, fadeOut) <= length && (dimAt == null || at < dimAt)) {
+      list.push('loop.ts')
+      at += loopSec
+    }
+    const black = async (name: string, sec: number): Promise<void> => {
+      await runFfmpeg(['-f', 'lavfi', '-i', `color=c=black:s=${size.w}x${size.h}:r=${fps}`, '-t', sec.toFixed(3), ...enc, name], tmp, ctx.signal)
+    }
+    if (dimAt != null && at >= dimAt && at + DIM_FADE_SEC < length) {
+      ctx.progress(0.57, 'Menyiapkan layar gelap')
+      await runFfmpeg(['-i', 'loop.ts', '-t', String(DIM_FADE_SEC), '-vf', `fade=t=out:st=0:d=${DIM_FADE_SEC}`, ...enc, 'dim.ts'], tmp, ctx.signal)
+      list.push('dim.ts')
+      at += DIM_FADE_SEC
+      const BLOCK = 60
+      if (length - at >= BLOCK) await black('black.ts', BLOCK)
+      while (length - at >= BLOCK) {
+        list.push('black.ts')
+        at += BLOCK
+      }
+      if (length - at > 0.5 / fps) {
+        await black('blacktail.ts', length - at)
+        list.push('blacktail.ts')
+      }
+    } else {
+      // The rest of the length from the loop (repeated when that is longer than one loop), fading to black.
+      const rest = length - at
+      if (rest > 0.5 / fps) {
+        ctx.progress(0.57, 'Menyiapkan bagian akhir')
+        const fade = Math.min(fadeOut, rest)
+        await runFfmpeg(
+          ['-stream_loop', '-1', '-i', 'loop.ts', '-t', rest.toFixed(3), ...(fade > 0 ? ['-vf', `fade=t=out:st=${(rest - fade).toFixed(3)}:d=${fade.toFixed(3)}`] : []), ...enc, 'tail.ts'],
+          tmp,
+          ctx.signal
+        )
+        list.push('tail.ts')
+      }
+    }
+  } else list.push('loop.ts')
+  writeFileSync(join(tmp, 'pieces.txt'), list.map((f) => `file '${f}'`).join('\n') + '\n', 'utf8')
+
+  // 3. one audio track for the whole length
+  const aargs: string[] = []
+  const agraph: string[] = []
+  audioGraph(bundle, real, { timeline: storySec, out: length }, opts, aargs, agraph, 0)
+  writeFileSync(join(tmp, 'audio.txt'), agraph.join(';\n'), 'utf8')
+  ctx.progress(0.6, 'Membuat suara')
+  await runFfmpeg(
+    [...aargs, '-filter_complex_script', 'audio.txt', '-map', '[aout]', '-c:a', 'aac', '-b:a', '128k', '-ar', '48000', '-t', length.toFixed(3), 'audio.m4a'],
+    tmp,
+    ctx.signal,
+    length,
+    (f) => ctx.progress(0.6 + 0.3 * f, 'Membuat suara')
+  )
+
+  // 4. join the pieces and the audio without re-encoding
+  const outPath = outputPath(opts)
+  ctx.progress(0.9, 'Menyatukan video')
+  await runFfmpeg(
+    ['-f', 'concat', '-safe', '0', '-i', 'pieces.txt', '-i', 'audio.m4a', '-map', '0:v', '-map', '1:a', '-c', 'copy', '-t', length.toFixed(3), '-movflags', '+faststart', outPath],
+    tmp,
+    ctx.signal,
+    length,
+    (f) => ctx.progress(0.9 + 0.09 * f, 'Menyatukan video')
+  )
+  if (opts.writeSrt) {
+    const chunks = captionChunks(bundle, real)
+    if (chunks.length) writeFileSync(outPath.replace(/\.mp4$/i, '.srt'), buildSrt(chunks), 'utf8')
+  }
+  return outPath
+}
+
+/** What the free version may export, whatever the dialog asked for: 720p at 30 fps (the watermark is added in renderProject). */
+export function limitExport(opts: ExportOptions): ExportOptions {
+  if (isPro()) return opts
+  return { ...opts, resolution: Math.min(opts.resolution, FREE_LIMITS.maxExportHeight) as ExportOptions['resolution'], fps: Math.min(opts.fps, FREE_LIMITS.maxFps) as ExportOptions['fps'] }
+}
+
+export function startExport(projectId: string, requested: ExportOptions): Job {
+  const opts = limitExport(requested)
   const job = insertJob({ projectId, kind: 'export', provider: 'ffmpeg', payload: { ...opts } })
   emit.job(job)
   return runJob(job, 'export', async (ctx) => {

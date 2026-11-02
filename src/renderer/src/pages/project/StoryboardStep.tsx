@@ -39,6 +39,7 @@ import { ClipVisual } from '../../components/ClipVisual'
 import { Badge, Button, Chip, IconButton, Menu, Progress, Segmented, confirmDialog, cx, inputCls } from '../../components/ui'
 import { clipNumber, errorText, mmss, secLabel, sizeLabel } from '../../lib/format'
 import { shuffleMotions, useMusicFit } from '../../lib/useMusicFit'
+import { useIsPro, useLicense } from '../../store/license'
 import { useNarration } from '../../lib/useNarration'
 import { useApp } from '../../store/app'
 import { isRunning, jobFor, useProject } from '../../store/project'
@@ -531,6 +532,8 @@ export function StoryboardStep() {
   const lastNarration = useRef<string | null>(null)
   const narration = useNarration()
   const musicFit = useMusicFit()
+  // The menu marks what needs Pro; choosing it explains and offers the upgrade.
+  const tag = useIsPro() ? '' : ' · Pro'
 
   // A failed narration take is reported once, when it happens.
   useEffect(() => {
@@ -593,6 +596,7 @@ export function StoryboardStep() {
   }
 
   const importFiles = async (how: 'batch' | 'json', kind: 'image' | 'audio'): Promise<void> => {
+    if (!(await useLicense.getState().ensure('batch-import'))) return
     try {
       await flush()
       const r = await record(kind === 'image' ? 'Impor gambar/video' : 'Impor suara', async () => {
@@ -609,6 +613,7 @@ export function StoryboardStep() {
   const dropFiles = async (clipId: string, files: File[]): Promise<void> => {
     const paths = files.map((file) => window.api.imports.pathOf(file)).filter(Boolean)
     if (!paths.length) return
+    if (paths.length > 1 && !(await useLicense.getState().ensure('batch-import'))) return
     try {
       await flush()
       const r = await record('Impor file', async () => {
@@ -782,17 +787,18 @@ export function StoryboardStep() {
         </div>
         <div className="flex-1" />
         <Menu
+          width={270}
           trigger={(open) => (
             <Button icon={<Upload className="size-[17px]" />} onClick={open} title="Pakai gambar, video, atau suara sendiri, satu per satu, sekaligus banyak, atau dari file JSON">
               Impor
             </Button>
           )}
           items={[
-            { label: 'Gambar/video sekaligus', icon: <ImageIcon className="size-4" />, run: () => void importFiles('batch', 'image') },
-            { label: 'Gambar/video dari JSON', icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'image') },
-            { label: 'Suara sekaligus', icon: <Volume2 className="size-4" />, run: () => void importFiles('batch', 'audio') },
-            { label: 'Suara dari JSON', icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'audio') },
-            { label: 'Musik + atur gambar', icon: <Music className="size-4" />, run: () => void musicFit.fit(true) }
+            { label: `Gambar/video sekaligus${tag}`, icon: <ImageIcon className="size-4" />, run: () => void importFiles('batch', 'image') },
+            { label: `Gambar/video dari JSON${tag}`, icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'image') },
+            { label: `Suara sekaligus${tag}`, icon: <Volume2 className="size-4" />, run: () => void importFiles('batch', 'audio') },
+            { label: `Suara dari JSON${tag}`, icon: <FileJson className="size-4" />, run: () => void importFiles('json', 'audio') },
+            { label: `Musik + atur gambar${tag}`, icon: <Music className="size-4" />, run: () => void musicFit.fit(true) }
           ]}
         />
         <Button

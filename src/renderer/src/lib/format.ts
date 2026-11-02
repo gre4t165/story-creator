@@ -10,6 +10,16 @@ export function timecode(sec: number): string {
   return `${String(m).padStart(2, '0')}:${r.toFixed(1).padStart(4, '0')}`
 }
 
+/** A length in words: "45 detik", "12 menit", "1 jam 30 menit". */
+export function durationLabel(sec: number): string {
+  const s = Math.max(0, Math.round(sec))
+  if (s < 60) return `${s} detik`
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} menit`
+  const h = Math.floor(m / 60)
+  return m % 60 ? `${h} jam ${m % 60} menit` : `${h} jam`
+}
+
 export function secLabel(ms: number): string {
   return `${(ms / 1000).toFixed(1).replace('.', ',')} dtk`
 }

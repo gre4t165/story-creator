@@ -6,7 +6,8 @@ import { readError } from './http'
 
 const BASE = 'https://api.elevenlabs.io'
 
-async function el<T>(path: string, init: RequestInit & { key?: string } = {}): Promise<T> {
+/** A request with the key, failed answers turned into readable errors. */
+async function request(path: string, init: RequestInit & { key?: string } = {}): Promise<Response> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -23,7 +24,11 @@ async function el<T>(path: string, init: RequestInit & { key?: string } = {}): P
     if (res.status === 429) throw new Error('ElevenLabs sedang sibuk. Coba lagi sebentar.')
     throw new Error(`ElevenLabs gagal: ${detail}`)
   }
-  return (await res.json()) as T
+  return res
+}
+
+async function el<T>(path: string, init: RequestInit & { key?: string } = {}): Promise<T> {
+  return (await (await request(path, init)).json()) as T
 }
 
 export async function testKey(key?: string): Promise<KeyTestResult> {
@@ -128,10 +133,14 @@ export async function speak(
   voiceId: string,
   languageCode: string,
   signal?: AbortSignal,
-  context?: { previous?: string; next?: string }
+  context?: { previous?: string; next?: string },
+  delivery?: { speed: number; tag: string }
 ): Promise<{ audio: Buffer; words: WordTiming[] }> {
   const model = getSettings().elevenModel
-  const body: Record<string, unknown> = { text: toElevenLabsText(text, model), model_id: model }
+  // A calm or whispered narrator: slower on every model, and v3 also takes a delivery tag in front of the line.
+  const line = delivery && /v3/i.test(model) ? `${delivery.tag} ${text}` : text
+  const body: Record<string, unknown> = { text: toElevenLabsText(line, model), model_id: model }
+  if (delivery) body.voice_settings = { speed: delivery.speed }
   if (context?.previous) body.previous_text = toElevenLabsText(context.previous, model)
   if (context?.next) body.next_text = toElevenLabsText(context.next, model)
   // multilingual_v2 does not take a language_code; newer models do.
@@ -141,4 +150,17 @@ export async function speak(
     { method: 'POST', body: JSON.stringify(body), signal }
   )
   return { audio: Buffer.from(r.audio_base64, 'base64'), words: r.alignment ? toWords(r.alignment) : [] }
+}
+
+/**
+ * A sound made from a description ("gentle rain on a tin roof at night"), up to 30 seconds, made to loop without a
+ * seam, for the ambience layers of a relax video. Returns MP3 bytes.
+ */
+export async function soundEffect(text: string, seconds: number, signal?: AbortSignal): Promise<Buffer> {
+  const res = await request('/v1/sound-generation?output_format=mp3_44100_128', {
+    method: 'POST',
+    body: JSON.stringify({ text, loop: true, duration_seconds: Math.min(30, Math.max(1, seconds)), prompt_influence: 0.5 }),
+    signal
+  })
+  return Buffer.from(await res.arrayBuffer())
 }

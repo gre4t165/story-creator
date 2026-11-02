@@ -2,9 +2,10 @@ import { normalizeRules, storyboardRules } from '@shared/content'
 import { CAMERA_PRESETS, MOTION_STRENGTHS, TRANSITIONS } from '@shared/motion'
 import { LANGUAGES, clipCountFor } from '@shared/models'
 import { estimateNarrationMs, needsVisual } from '@shared/script'
+import { AMBIENCE_SCENE_SEC, relaxClipCount, relaxHoldMs } from '@shared/relax'
 import { getStyle } from '@shared/styles'
-import type { CameraPresetId, Clip, MotionStrength, MusicPrompt, ProjectBundle, TransitionId } from '@shared/types'
-import { applyVisuals, charactersOf, clipsOf, getBundle, getProject, replaceScript, type SceneVisual } from './repo'
+import type { CameraPresetId, Clip, MotionStrength, MusicPrompt, ProjectBundle, RelaxKind, TransitionId } from '@shared/types'
+import { applyVisuals, charactersOf, clipsOf, getBundle, getProject, patchClip, replaceScript, type SceneVisual } from './repo'
 import { getSettings } from './settings'
 import { generateJson } from './services/llm'
 
@@ -21,7 +22,7 @@ function languageOf(code: string): string {
 // ---------- step 1 → 2: the script ----------
 
 /** JSON Schema written to satisfy OpenAI strict mode (every property required, no extra keys) and Gemini. */
-const SCRIPT_SCHEMA = {
+const scriptSchema = (narration: string): object => ({
   type: 'object',
   additionalProperties: false,
   properties: {
@@ -37,17 +38,52 @@ const SCRIPT_SCHEMA = {
             type: 'string',
             description: 'What happens in this scene, one or two sentences in the target language, so the writer can check the plot.'
           },
-          narration: {
-            type: 'string',
-            description:
-              'Voice-over for this scene in the target language, 10 to 18 spoken words, natural spoken rhythm. May contain one or two English vocal tags in angle brackets.'
-          }
+          narration: { type: 'string', description: narration }
         },
         required: ['title', 'story', 'narration']
       }
     }
   },
   required: ['title', 'scenes']
+})
+
+const STORY_NARRATION =
+  'Voice-over for this scene in the target language, 10 to 18 spoken words, natural spoken rhythm. May contain one or two English vocal tags in angle brackets.'
+
+/** What the writer is asked for in a sleep, meditation or ambience video. */
+const RELAX_WRITERS: Record<RelaxKind, { system: string[]; narration: string }> = {
+  sleep: {
+    system: [
+      'You write bedtime stories for a YouTube sleep channel, for adults and older children who listen in bed with the lights off.',
+      'The story is gentle, slow and low-stakes: no danger, no villains, no conflict that raises the pulse, no cliffhangers, nothing sudden or loud.',
+      'It lingers on calm sensory details (warm light, soft sounds, textures, scents, slow movement) and wanders through one peaceful place or a quiet journey.',
+      'Every scene is a little slower and quieter than the one before; the last scenes invite the listener to rest and let go.',
+      'Sentences are short and flowing. No exclamation marks, no questions that need an answer, no requests to like or subscribe.',
+      'The title names the story and the mood, like a sleep-story title on YouTube.'
+    ],
+    narration:
+      'Voice-over for this scene in the target language, 22 to 34 spoken words of slow, soothing narration. End with <long pause>; at most one more <long pause> inside. No other tags.'
+  },
+  meditation: {
+    system: [
+      'You write guided meditations for relaxation and sleep, spoken by a calm guide.',
+      'Speak to the listener directly and warmly in the second person (in Indonesian use "kamu", never "Anda").',
+      'Follow a clear arc: settle in and get comfortable, slow breathing with counts (breathe in for four, hold, breathe out for six), relax the body part by part from head to toe, a peaceful place to imagine, and a gentle ending that either drifts into sleep or returns slowly.',
+      'Each scene is one step. Leave room for silence: after every instruction to breathe or to notice something, add <long pause>.',
+      'No medical claims, no exclamation marks, no requests to like or subscribe.'
+    ],
+    narration:
+      'Words of the guide for this step in the target language, 12 to 24 spoken words. Add <long pause> after each instruction, one to three per scene. No other tags.'
+  },
+  ambience: {
+    system: [
+      'You plan an ambience video for YouTube: a slow sequence of peaceful views that loops for hours under ambient sound, for sleep, study or relaxation. There is no narration.',
+      'All scenes show the same place or one quiet journey (for example a wooden cabin in the rain at night: the window, the fireplace, the porch, the forest outside), each a calm view that changes gently from the one before: closer, another angle, the light shifting.',
+      'Nothing happens suddenly, no people in action, no text. The last scene leads naturally back to the first, because the video loops.',
+      'The title names the place and the sound, like an ambience title on YouTube (for example "Hujan di pondok kayu - suara untuk tidur").'
+    ],
+    narration: 'Always an empty string: this video has no voice-over.'
+  }
 }
 
 interface ScriptPlan {
@@ -60,9 +96,13 @@ export async function generateScript(projectId: string): Promise<ProjectBundle> 
   const project = getProject(projectId)
   if (!project.synopsis.trim()) throw new Error('Tulis ide cerita atau sinopsis dulu.')
   const lang = languageOf(project.language)
-  const count = clipCountFor(project.durationSec)
+  const relax = project.editor.relax
+  const count = relax ? relaxClipCount(relax.kind, project.durationSec) : clipCountFor(project.durationSec)
+  const writer = relax ? RELAX_WRITERS[relax.kind] : null
 
-  const system = [
+  const system = writer
+    ? [...writer.system, `Write everything in ${lang}${relax?.kind === 'ambience' ? '' : ', except the vocal tags, which stay in English'}.`].join(' ')
+    : [
     'You are a scriptwriter for faceless YouTube storytelling and explainer videos.',
     'You turn an idea into a sequence of short scenes. Each scene has one line of voice-over.',
     'The first scene is a strong hook. The story has a clear beginning, rising tension and a satisfying ending. The last scene can invite viewers to subscribe.',
@@ -76,19 +116,23 @@ export async function generateScript(projectId: string): Promise<ProjectBundle> 
     `Write exactly ${count} scenes.`
   ].join('\n\n')
 
-  const plan = await generateJson<ScriptPlan>({ system, prompt, schema: SCRIPT_SCHEMA, name: 'script' })
+  const plan = await generateJson<ScriptPlan>({ system, prompt, schema: scriptSchema(writer?.narration ?? STORY_NARRATION), name: 'script' })
   const scenes = (plan.scenes ?? []).filter((c) => str(c.narration) || str(c.story))
   if (!scenes.length) throw new Error('Model tidak menghasilkan adegan. Coba lagi atau pilih model lain di Pengaturan.')
 
   replaceScript(
     projectId,
     str(plan.title) || project.title,
-    scenes.map((c, i) => ({
-      title: str(c.title) || `Adegan ${i + 1}`,
-      story: str(c.story),
-      narration: str(c.narration),
-      durationMs: estimateNarrationMs(str(c.narration))
-    }))
+    scenes.map((c, i) => {
+      // An ambience has no voice; its scenes last a fixed time. Calm narration is slower than the estimate assumes.
+      const narration = relax?.kind === 'ambience' ? '' : str(c.narration)
+      const durationMs = !relax
+        ? estimateNarrationMs(narration)
+        : relax.kind === 'ambience'
+          ? AMBIENCE_SCENE_SEC * 1000
+          : Math.round(estimateNarrationMs(narration) * 1.35) + relaxHoldMs(project.editor)
+      return { title: str(c.title) || `Adegan ${i + 1}`, story: str(c.story), narration, durationMs }
+    })
   )
   return getBundle(projectId)
 }
@@ -269,6 +313,11 @@ export async function generateVisuals(projectId: string, mode: 'missing' | 'all'
     '6. No readable text, signs, captions or labels in the image. Vary shot sizes, angles and camera moves across scenes so the video never feels repetitive.',
     // Content rules from Settings: hidden faces and modest clothing, phrased as framing and wardrobe choices.
     ...storyboardRules(normalizeRules(getSettings().contentRules), 7),
+    ...(project.editor.relax
+      ? [
+          'This is a calm video for relaxation and sleep: peaceful, cozy, beautiful compositions with soft warm, golden or moonlit light and gentle colors. No action, no danger, no crowds, nothing startling. People, if any, are small in the frame, seen from a distance or from behind. Camera moves are always slow (strength halus, never shake) and every transition is a fade.'
+        ]
+      : []),
     'Write "world", "identity", "outfit", "setting", "action", "wardrobe", "framing", "avoid" and "motion" in English.'
   ].join('\n')
   const script = clips
@@ -303,12 +352,23 @@ export async function generateVisuals(projectId: string, mode: 'missing' | 'all'
     updates.push(toSceneVisual(t.clip, a))
   }
 
+  const relax = !!project.editor.relax
   applyVisuals(
     projectId,
     (plan.characters ?? []).filter((c) => str(c.name)).map((c) => ({ name: str(c.name), description: characterLook(c) })),
-    updates
+    relax ? updates.map(calmVisual) : updates
   )
+  // Long, soft fades between scenes suit a sleep video better than the 0.4 s default.
+  if (relax) for (const u of updates) patchClip(u.clipId, { transitionMs: RELAX_FADE_MS })
   return getBundle(projectId)
+}
+
+const RELAX_FADE_MS = 2500
+
+/** Relax videos only move slowly: the model's camera choice is kept unless it would shake or stand still, and every join fades. */
+function calmVisual(v: SceneVisual): SceneVisual {
+  const cameraPreset = v.cameraPreset === 'shake' || v.cameraPreset === 'static' ? 'kenburns' : v.cameraPreset
+  return { ...v, cameraPreset, motionStrength: 'halus', transition: 'fade' }
 }
 
 function toSceneVisual(clip: Clip, a: NonNullable<VisualPlan['scenes']>[number]): SceneVisual {
@@ -361,7 +421,12 @@ export async function generateMusicPrompt(projectId: string): Promise<MusicPromp
     'You are a music supervisor for faceless YouTube storytelling videos.',
     'You pick background music that supports a voice-over without competing with it: instrumental, no vocals or choirs with words, clear space in the mid range where the voice sits.',
     'Match the setting and era of the story (for example gamelan or kendang colours for an old Javanese kingdom, orchestral for epic history, lo-fi for a calm explainer) and follow its emotional arc from the hook to the ending.',
-    'Write the music fields in English, because music AIs understand English best. Never name real artists or copyrighted songs.'
+    'Write the music fields in English, because music AIs understand English best. Never name real artists or copyrighted songs.',
+    ...(p.editor.relax
+      ? [
+          'This is a long video for sleep, meditation or relaxation that loops for hours: write calm ambient music (soft piano, warm pads, gentle strings or a slow drone), 50 to 70 BPM or free time, no drums or percussion hits, no build-ups or drops, no sudden changes, low dynamic range, and an ending that flows back into its start so it loops seamlessly.'
+        ]
+      : [])
   ].join(' ')
   const scenes = clips
     .map((c, i) => `${i + 1}. ${c.title}: ${c.story || c.narration}`.slice(0, 260))

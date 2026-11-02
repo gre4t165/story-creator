@@ -37,7 +37,9 @@ src/
     editing.ts     potong (split) klip, lepas suara klip
     importer.ts    impor gambar/video/suara: satu file, batch, JSON, seret ke kartu klip
     beats.ts       ketukan kasar musik (untuk "Musik + atur gambar")
-    exporter.ts    render MP4 dengan FFmpeg
+    exporter.ts    render MP4 dengan FFmpeg; video tidur/ambience panjang lewat loop tanpa render ulang
+    relax.ts       suara suasana dari file sendiri atau ElevenLabs Sound Effects
+    license.ts     gratis atau Pro: token offline bertanda tangan, aktivasi, batas versi gratis
     fontMetrics.ts lebar teks dari file TTF (untuk kotak caption di ekspor)
     jobs.ts, events.ts  antrean job + event ke renderer
     secrets.ts     kunci API terenkripsi (safeStorage/DPAPI)
@@ -49,8 +51,10 @@ src/
     pages/project/  langkah Ide, Naskah, Storyboard, Editor
     pages/project/editor/  pratinjau (Player), Timeline, Inspector (panel kanan), engine pemutaran
 resources/         font caption, whisper-cli.exe + DLL, pustaka SFX CC0 (sfx/), file lisensi
-scripts/           sfx-catalog.cjs: bangun ulang src/shared/sfx-catalog.json; make-icon.cjs: logo.svg → build/icon.ico
+scripts/           sfx-catalog.cjs: bangun ulang src/shared/sfx-catalog.json; make-icon.cjs: logo.svg → build/icon.ico;
+                   ambience-pack.cjs: rekaman Freesound CC0 → loop di resources/sfx/ambience
 build/             ikon installer/exe (icon.ico, icon.png), dibuat dari logo
+license-server/   Cloudflare Worker: memeriksa kode ke Mayar dan menandatangani lisensi (panduan di README-nya)
 docs/              dokumentasi pengembang
 ```
 
@@ -59,7 +63,8 @@ docs/              dokumentasi pengembang
 1. **Pratinjau dan ekspor harus sama.** Semua aturan yang memengaruhi gambar atau suara final ditulis sekali di
    `src/shared/` lalu dipakai pratinjau (renderer) dan ekspor (main):
    `motion.ts` (gerak kamera, transisi), `captions.ts` (gaya, font, pemenggalan baris caption),
-   `timeline.ts` (potongan suara/musik, kata caption per klip), `overlays.ts`, `higgsfield.ts`, `sfx.ts` (cara SFX diputar).
+   `timeline.ts` (potongan suara/musik, kata caption per klip), `overlays.ts`, `higgsfield.ts`, `sfx.ts` (cara SFX diputar),
+   `relax.ts` (lapisan suasana, panjang video tidur, layar gelap).
    Jangan menghitung ulang aturan itu di satu sisi saja.
 2. **Kunci API milik pengguna (BYOK).** Kunci hanya disimpan terenkripsi lewat `secrets.ts`, hanya dikirim ke
    layanannya masing-masing, dan tidak pernah dicetak ke log, error, atau file.
@@ -81,6 +86,8 @@ docs/              dokumentasi pengembang
 10. **Semua perubahan proyek harus bisa diurungkan.** Ubah proyek lewat store (`updateClip`, `updateEditor`, dst.), jangan
     `set()` langsung; aksi IPC yang mengubah klip dibungkus `record()` di renderer. Lihat
     [docs/editor-dan-ekspor.md](docs/editor-dan-ekspor.md#urungkan-dan-ulangi-storeprojectts-libhistoryts).
+11. **Batas versi gratis diputuskan di proses main** (`main/license.ts`), bukan hanya di renderer. Fitur Pro baru: lihat
+    [docs/lisensi.md](docs/lisensi.md). Kunci privat lisensi tidak boleh masuk repo.
 
 ## Cara menguji perubahan
 
@@ -100,6 +107,7 @@ docs/              dokumentasi pengembang
 | Alur produksi (naskah → visual → suara → caption) | [docs/alur-produksi.md](docs/alur-produksi.md) |
 | Editor, timeline, pratinjau, ekspor | [docs/editor-dan-ekspor.md](docs/editor-dan-ekspor.md) |
 | Layanan AI dan kunci API | [docs/layanan-ai.md](docs/layanan-ai.md) |
+| Versi gratis dan Pro, lisensi, server lisensi | [docs/lisensi.md](docs/lisensi.md) |
 | Setup, dev harness, build, rilis | [docs/pengembangan.md](docs/pengembangan.md) |
 | Gaya kode dan aturan UI | [docs/konvensi.md](docs/konvensi.md) |
 | Keputusan teknis dan alasannya | [docs/keputusan-teknis.md](docs/keputusan-teknis.md) |

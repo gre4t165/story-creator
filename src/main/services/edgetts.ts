@@ -90,7 +90,8 @@ function friendly(e: unknown): Error {
 }
 
 /** Speaks narration and returns MP3 bytes with the time of each spoken word. */
-export async function speak(text: string, voice: string, signal?: AbortSignal): Promise<{ audio: Buffer; words: WordTiming[] }> {
+/** `rate` slows or speeds the voice, e.g. "-20%" for a calm narrator. */
+export async function speak(text: string, voice: string, signal?: AbortSignal, rate?: string): Promise<{ audio: Buffer; words: WordTiming[] }> {
   const plain = plainForEdge(text)
   if (!plain) throw new Error('Naskah kosong setelah tag suara dibuang')
   if (!voice) throw new Error('Pilih suara Edge dulu di langkah Ide cerita.')
@@ -98,7 +99,7 @@ export async function speak(text: string, voice: string, signal?: AbortSignal): 
   let abort: (() => void) | undefined
   try {
     await tts.setMetadata(voice, FORMAT, { wordBoundaryEnabled: true })
-    const { audioStream, metadataStream } = tts.toStream(escapeXml(plain))
+    const { audioStream, metadataStream } = tts.toStream(escapeXml(plain), rate ? { rate } : undefined)
     const audio: Buffer[] = []
     const meta: string[] = []
     await new Promise<void>((resolve, reject) => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AudioLines, Check, Clapperboard, Copy, ExternalLink, Film, Layers, Mic, Move, Music, Play, Sparkles, Type, VideoOff, Volume2, X } from 'lucide-react'
+import { AudioLines, Check, CloudRain, Clapperboard, Copy, ExternalLink, Film, Layers, Lock, Mic, Move, Music, Play, Sparkles, Type, VideoOff, Volume2, X } from 'lucide-react'
 import {
   CAPTION_FONTS,
   CAPTION_POSITIONS,
@@ -21,15 +21,17 @@ import { clipNumber, errorText, secLabel, timecode } from '../../../lib/format'
 import { useApp } from '../../../store/app'
 import { ELEVENLABS_URL } from '../../../lib/links'
 import { useMusicFit } from '../../../lib/useMusicFit'
+import { useIsPro } from '../../../store/license'
 import { useNarration } from '../../../lib/useNarration'
 import { isRunning, jobFor, useProject } from '../../../store/project'
 import { UNKNOWN_AUDIO_MS, useAudition, useCaptionUi, useTimeline } from './engine'
 import { OverlayPanel } from './OverlayPanel'
+import { RelaxPanel } from './RelaxPanel'
 import { SfxPanel } from './SfxPanel'
 import { TransitionPanel } from './TransitionPanel'
 
 /** 'transisi' has no button on the rail; it opens from the round buttons between clips on the timeline. */
-export type InspectorTab = 'klip' | 'suara' | 'caption' | 'overlay' | 'musik' | 'sfx' | 'transisi'
+export type InspectorTab = 'klip' | 'suara' | 'caption' | 'overlay' | 'musik' | 'sfx' | 'suasana' | 'transisi'
 
 export const INSPECTOR_TABS: { id: InspectorTab; label: string; icon: typeof Move }[] = [
   { id: 'klip', label: 'Klip', icon: Move },
@@ -37,7 +39,9 @@ export const INSPECTOR_TABS: { id: InspectorTab; label: string; icon: typeof Mov
   { id: 'caption', label: 'Caption', icon: Type },
   { id: 'overlay', label: 'Overlay', icon: Layers },
   { id: 'musik', label: 'Musik', icon: Music },
-  { id: 'sfx', label: 'SFX', icon: AudioLines }
+  { id: 'sfx', label: 'SFX', icon: AudioLines },
+  // Only on sleep, meditation and ambience projects.
+  { id: 'suasana', label: 'Suasana', icon: CloudRain }
 ]
 
 function Section({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
@@ -772,6 +776,7 @@ function MusicTab() {
   const { project, assets, updateEditor } = useProject()
   const { toast } = useApp()
   const musicFit = useMusicFit()
+  const isPro = useIsPro()
   if (!project) return null
   const e = project.editor
   const music = e.musicAssetId ? assets[e.musicAssetId] : null
@@ -810,6 +815,7 @@ function MusicTab() {
             className="self-start"
             loading={musicFit.busy}
             title="Atur panjang tiap klip supaya video sepanjang musik dan gambar berganti di ketukan"
+            icon={isPro ? undefined : <Lock className="size-4" />}
             onClick={() => void musicFit.fit(false)}
           >
             Sesuaikan gambar dengan musik
@@ -880,6 +886,7 @@ export function Inspector({
       {tab === 'overlay' && <OverlayPanel total={total} />}
       {tab === 'musik' && <MusicTab />}
       {tab === 'sfx' && <SfxPanel total={total} />}
+      {tab === 'suasana' && <RelaxPanel total={total} />}
       {tab === 'transisi' && <TransitionView id={transitionId} />}
     </aside>
   )
