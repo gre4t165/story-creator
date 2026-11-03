@@ -306,6 +306,8 @@ export interface NewProjectInput {
   aspectRatio?: AspectRatio
   styleId?: string
   ttsProvider?: TtsProvider
+  /** A sleep, meditation or ambience video from the start; absent for a normal story. */
+  relaxKind?: RelaxKind
 }
 
 export interface KeyStatus {

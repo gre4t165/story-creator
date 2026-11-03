@@ -8,6 +8,12 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+## [1.4.1] - 2026-11-03
+
+### Ditambahkan
+- Pilihan **Jenis** (Cerita, Cerita tidur, Meditasi, Ambience) langsung di kotak ide halaman awal, jadi video tidur
+  dan ASMR bisa dimulai dari sana tanpa harus mengganti jenisnya di langkah Ide.
+
 ## [1.4.0] - 2026-11-02
 
 ### Ditambahkan

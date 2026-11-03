@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, Copy, FolderOpen, MoreHorizontal, Plus, Search, SlidersHorizontal, Sparkles, Trash2 } from 'lucide-react'
 import { DURATIONS, LANGUAGES, llmName } from '@shared/models'
+import { RELAX_KINDS, RELAX_STORY_DURATIONS } from '@shared/relax'
 import { getStyle } from '@shared/styles'
-import type { ApiProvider, AppSettings, AspectRatio, KeyStatus, ProjectStatus, ProjectSummary, TtsProvider } from '@shared/types'
+import type { ApiProvider, AppSettings, AspectRatio, KeyStatus, ProjectStatus, ProjectSummary, RelaxKind, TtsProvider } from '@shared/types'
 import { Logo } from '../components/Logo'
 import { Select, type SelectOption } from '../components/Select'
 import { StyleSwatch } from '../components/StyleArt'
@@ -39,6 +40,20 @@ function joinList(items: string[]): string {
   return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} dan ${items[items.length - 1]}`
 }
 
+type VideoKind = RelaxKind | 'story'
+
+const KINDS: SelectOption<VideoKind>[] = [
+  { value: 'story', label: 'Cerita', note: 'Video cerita biasa dengan narator dan caption.' },
+  ...RELAX_KINDS.map((k) => ({ value: k.id, label: k.label, note: `${k.hint} Bisa sampai 10 jam.` }))
+]
+
+const PLACEHOLDERS: Record<VideoKind, string> = {
+  story: 'Contoh: Gajah Mada bersumpah tidak akan menikmati palapa sebelum Nusantara bersatu. Para menteri menertawakannya, tapi dia membuktikannya…',
+  sleep: 'Contoh: Berjalan pelan di hutan pinus saat gerimis, lalu beristirahat di pondok kayu yang hangat…',
+  meditation: 'Contoh: Relaksasi tubuh sebelum tidur, dari napas pelan sampai seluruh badan terasa ringan…',
+  ambience: 'Contoh: Pondok kayu di pegunungan saat hujan malam, perapian menyala, jendela berembun…'
+}
+
 const ASPECTS: SelectOption<AspectRatio>[] = [
   { value: '16:9', label: '16:9 · YouTube', icon: <span className="block h-[10px] w-[17px] rounded-[2px] border-[1.5px] border-ink" /> },
   { value: '9:16', label: '9:16 · Shorts', icon: <span className="mx-[3px] block h-[16px] w-[10px] rounded-[2px] border-[1.5px] border-ink" /> }
@@ -58,7 +73,16 @@ export function Home() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('16:9')
   const [styleId, setStyleId] = useState('stickman')
   const [tts, setTts] = useState<TtsProvider>('gemini')
+  const [kind, setKind] = useState<VideoKind>('story')
   const [creating, setCreating] = useState(false)
+
+  const durations = kind === 'story' ? DURATIONS : RELAX_STORY_DURATIONS[kind]
+  // Each kind has its own story lengths; keep the chosen one when the new kind offers it, as the Idea step does.
+  const pickKind = (k: VideoKind): void => {
+    setKind(k)
+    const list = k === 'story' ? DURATIONS : RELAX_STORY_DURATIONS[k]
+    if (!list.some((d) => d.sec === durationSec)) setDurationSec(list[Math.min(1, list.length - 1)].sec)
+  }
 
   const refresh = (): void => {
     window.api.projects
@@ -112,7 +136,15 @@ export function Home() {
   const start = async (): Promise<void> => {
     setCreating(true)
     try {
-      const b = await window.api.projects.create({ synopsis, durationSec, language, aspectRatio, styleId, ttsProvider: tts })
+      const b = await window.api.projects.create({
+        synopsis,
+        durationSec,
+        language,
+        aspectRatio,
+        styleId,
+        ttsProvider: tts,
+        relaxKind: kind === 'story' ? undefined : kind
+      })
       go({ name: 'project', id: b.project.id })
     } catch (e) {
       toast('error', errorText(e))
@@ -201,16 +233,17 @@ export function Home() {
               rows={3}
               value={synopsis}
               onChange={(e) => setSynopsis(e.target.value)}
-              placeholder="Contoh: Gajah Mada bersumpah tidak akan menikmati palapa sebelum Nusantara bersatu. Para menteri menertawakannya, tapi dia membuktikannya…"
+              placeholder={PLACEHOLDERS[kind]}
               className="resize-none bg-transparent text-lg leading-relaxed outline-none placeholder:text-muted/70"
             />
             <div className="flex flex-wrap items-center gap-2 border-t border-dashed border-line pt-3.5">
+              <Select variant="pill" label="Jenis" value={kind} onChange={pickKind} options={KINDS} menuWidth={340} />
               <Select
                 variant="pill"
-                label="Durasi"
+                label={kind === 'ambience' ? 'Pemandangan' : 'Durasi'}
                 value={durationSec}
                 onChange={setDurationSec}
-                options={DURATIONS.map((d) => ({ value: d.sec, label: d.label }))}
+                options={durations.map((d) => ({ value: d.sec, label: d.label }))}
               />
               <Select
                 variant="pill"

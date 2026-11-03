@@ -18,6 +18,7 @@ import type {
   ProjectSummary
 } from '@shared/types'
 import { defaultVoiceFor } from '@shared/models'
+import { newRelaxSettings } from '@shared/relax'
 import { visualSourceOf } from '@shared/script'
 import { getDb } from './db'
 import { assetUrl, projectDir, projectsRoot } from './paths'
@@ -161,6 +162,10 @@ export function createProject(input: NewProjectInput): Project {
   const id = randomUUID()
   const tts = input.ttsProvider ?? s.defaultTtsProvider
   const language = input.language ?? s.defaultLanguage
+  // Same settings as picking the kind in the Idea step: relax videos never show captions on screen.
+  const editor: EditorSettings = input.relaxKind
+    ? { ...DEFAULT_EDITOR, relax: newRelaxSettings(input.relaxKind), captionStyle: 'none' }
+    : DEFAULT_EDITOR
   getDb()
     .prepare(
       `INSERT INTO projects (id, title, synopsis, duration_sec, language, aspect_ratio, style_id, tts_provider, tts_voice,
@@ -179,7 +184,7 @@ export function createProject(input: NewProjectInput): Project {
       defaultVoiceFor(tts, language),
       s.imageModel,
       s.videoModel,
-      JSON.stringify(DEFAULT_EDITOR),
+      JSON.stringify(editor),
       now,
       now
     )
